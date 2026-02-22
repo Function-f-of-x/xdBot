@@ -160,11 +160,11 @@ int Macro::save(std::string author, std::string desc, std::string path, bool jso
         iterations++;
 
         if (iterations > 1) {
-            int length = 3 + std::to_string(iterations - 1).length();
+            int length = 3 + geode::utils::numToString(iterations - 1).length();
             path.erase(path.length() - length, length);
         }
 
-        path += fmt::format(" ({})", std::to_string(iterations));
+        path += fmt::format(" ({})", geode::utils::numToString(iterations));
     }
 
     path += extension;

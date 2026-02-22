@@ -104,7 +104,7 @@ class $modify(PauseLayer) {
             g.frameOffset = value;
             
             if (g.layer) {
-                static_cast<RecordLayer*>(g.layer)->warningLabel->setString(("WARNING: Currently recording / playing macros with a frame offset of " + std::to_string(value)).c_str());
+                static_cast<RecordLayer*>(g.layer)->warningLabel->setString(("WARNING: Currently recording / playing macros with a frame offset of " + geode::utils::numToString(value)).c_str());
                 static_cast<RecordLayer*>(g.layer)->warningLabel->setVisible(value != 0);
                 static_cast<RecordLayer*>(g.layer)->warningSprite->setVisible(value != 0);
             }
@@ -319,7 +319,7 @@ class $modify(PauseLayer) {
         if (node == seedInput) {
             
             if (auto num = numFromString<unsigned long long>(seedInput->getString())) {
-                mod->setSavedValue("macro_seed", std::to_string(num.unwrap()));
+                mod->setSavedValue("macro_seed", geode::utils::numToString(num.unwrap()));
                 return;
             }
             else {
@@ -574,7 +574,7 @@ class $modify(PauseLayer) {
         warningSprite->setPosition({ 82, 307 });
         m_mainLayer->addChild(warningSprite);
         
-        warningLabel = CCLabelBMFont::create(("WARNING: Currently recording / playing macros with a frame offset of " + std::to_string(g.frameOffset)).c_str(), "bigFont.fnt");
+        warningLabel = CCLabelBMFont::create(("WARNING: Currently recording / playing macros with a frame offset of " + geode::utils::numToString(g.frameOffset)).c_str(), "bigFont.fnt");
         warningLabel->setAnchorPoint({ 0, 0.5 });
         warningLabel->setPosition({ 92, 307 });
         warningLabel->setScale(0.275f);
@@ -647,7 +647,7 @@ class $modify(PauseLayer) {
         menu->addChild(recording);
         menu->addChild(playing);
         
-        actionsLabel = CCLabelBMFont::create(("Actions: " + std::to_string(g.macro.inputs.size())).c_str(), "chatFont.fnt");
+        actionsLabel = CCLabelBMFont::create(("Actions: " + geode::utils::numToString(g.macro.inputs.size())).c_str(), "chatFont.fnt");
         actionsLabel->limitLabelWidth(57.f, 0.6f, 0.01f);
         actionsLabel->updateLabel();
         actionsLabel->setAnchorPoint({ 0, 0.5 });

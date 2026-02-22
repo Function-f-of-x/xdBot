@@ -59,8 +59,8 @@ void RenderSettingsLayer::onDefaults(CCObject*) {
             g.mod->setSavedValue("render_file_extension", std::string(".mp4"));
             g.mod->setSavedValue("render_fade_in", false);
             g.mod->setSavedValue("render_fade_out", false);
-            g.mod->setSavedValue("render_fade_in_time", std::to_string(2));
-            g.mod->setSavedValue("render_fade_out_time", std::to_string(2));
+            g.mod->setSavedValue("render_fade_in_time", geode::utils::numToString(2));
+            g.mod->setSavedValue("render_fade_out_time", geode::utils::numToString(2));
             g.mod->setSavedValue("render_hide_endscreen", false);
             g.mod->setSavedValue("render_hide_levelcomplete", false);
             
@@ -100,7 +100,7 @@ bool RenderSettingsLayer::init() {
     Utils::setBackgroundColor(m_bgSprite);
     
     if (mod->getSavedValue<std::string>("render_seconds_after") == "")
-    mod->setSavedValue("render_seconds_after", std::to_string(0));
+    mod->setSavedValue("render_seconds_after", geode::utils::numToString(0));
     
     cocos2d::CCSize center = cocos2d::CCDirector::sharedDirector()->getWinSize() / 2;
     

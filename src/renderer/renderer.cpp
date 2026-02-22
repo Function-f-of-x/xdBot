@@ -262,7 +262,7 @@ void Renderer::start() {
     auto duration = now.time_since_epoch();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
     
-    std::string filename = fmt::format("render_{}_{}{}", std::string_view(pl->m_level->m_levelName), std::to_string(timestamp), extension);
+    std::string filename = fmt::format("render_{}_{}{}", std::string_view(pl->m_level->m_levelName), geode::utils::numToString(timestamp), extension);
     #ifdef GEODE_IS_IOS
     std::string path = geode::utils::string::pathToString(Mod::get()->getSaveDir() / "renders" / filename);
     #else
@@ -368,9 +368,9 @@ void Renderer::start() {
             command = fmt::format(
                 "\"{}\" -y -f rawvideo -pix_fmt rgb24 -s {}x{} -r {} -i - {}{}{} -vf \"vflip,{}{}\" -an \"{}\" ",
                 ffmpegPath,
-                std::to_string(width),
-                std::to_string(height),
-                std::to_string(fps),
+                geode::utils::numToString(width),
+                geode::utils::numToString(height),
+                geode::utils::numToString(fps),
                 codec,
                 bitrate,
                 extraArgs,
@@ -479,7 +479,7 @@ void Renderer::start() {
             float fadeOutStart = totalTime - fadeOutTime;
             
             if (fadeOutVideo) {
-                command = fmt::format("\"{}\" -i \"{}\" -vf \"fade=t=out:st={}:d={}\" {}{}-c:a copy \"{}\"", ffmpegPath, path, fadeOutStart, std::to_string(fadeOutTime), codec, bitrate, path + "_temp" + extension);
+                command = fmt::format("\"{}\" -i \"{}\" -vf \"fade=t=out:st={}:d={}\" {}{}-c:a copy \"{}\"", ffmpegPath, path, fadeOutStart, geode::utils::numToString(fadeOutTime), codec, bitrate, path + "_temp" + extension);
                 
                 log::info("Executing (Fade Out): {}", command);
                 process = subprocess::Popen(command);
@@ -513,13 +513,13 @@ void Renderer::start() {
                 
                 std::string fadeInString;
                 if ((fadeIn && audioMode == AudioMode::Song) || fadeInVideo) 
-                fadeInString = fmt::format(", afade=t=in:d={}", fadeInVideo ? std::to_string(fadeInTime) : "2");
+                fadeInString = fmt::format(", afade=t=in:d={}", fadeInVideo ? geode::utils::numToString(fadeInTime) : "2");
                 
                 std::string fadeOutString;
                 if ((fadeOut && audioMode == AudioMode::Song) || fadeOutVideo) 
                 fadeOutString = fmt::format(
                     ", afade=t=out:d={}:st={}", 
-                    fadeOutVideo ? std::to_string(fadeOutTime) : "2",
+                    fadeOutVideo ? geode::utils::numToString(fadeOutTime) : "2",
                     fadeOutVideo ? fadeOutStart : totalTime - timeAfter - 3.5f
                 );
                 

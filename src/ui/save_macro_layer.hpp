@@ -109,7 +109,7 @@ public:
         int result = Macro::save(author, desc, geode::utils::string::pathToString(path), jsonToggle->isToggled());
 
         if (result != 0)
-            return FLAlertLayer::create("Error", "There was an error saving the macro. ID: " + std::to_string(result), "OK")->show();
+            return FLAlertLayer::create("Error", "There was an error saving the macro. ID: " + geode::utils::numToString(result), "OK")->show();
 
         this->keyBackClicked();
         Notification::create("Macro Saved", NotificationIcon::Success)->show();

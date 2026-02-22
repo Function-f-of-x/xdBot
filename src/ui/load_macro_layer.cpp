@@ -108,7 +108,7 @@ void LoadMacroLayer::deleteSelected(CCObject*) {
 	
 	geode::createQuickPopup(
 		"Warning",
-		"Are you sure you want to <cr>delete</c> <cy>" + std::to_string(amount) + "</c> " + (isAutosaves ? "autosave" : "macro") + "(s)?",
+		"Are you sure you want to <cr>delete</c> <cy>" + geode::utils::numToString(amount) + "</c> " + (isAutosaves ? "autosave" : "macro") + "(s)?",
 		"Cancel", "Yes",
 		[this, amount](auto, bool btn2) {
 			if (btn2) {
@@ -147,12 +147,21 @@ LoadMacroLayer* LoadMacroLayer::create(geode::Popup* layer, geode::Popup* layer2
 }
 
 void LoadMacroLayer::onImportMacro(CCObject*) {
+	if (isPickingFile) return;
 	file::FilePickOptions fileOptions;
 	fileOptions.filters.push_back({"Macro Files", { "*.gdr", "*.xd", "*.json" }});
+	auto weakThis = geode::WeakRef(this);
+	isPickingFile = true;
 	
-	m_importTask.spawn(file::pick(file::PickMode::OpenFile, fileOptions), [this](auto res) {
-		if (!res.isOk()) return;
+	m_importTask.spawn(file::pick(file::PickMode::OpenFile, fileOptions), [weakThis](auto res) {
 		
+		auto self = weakThis.lock();
+		if (!self) return;
+		
+		self->isPickingFile = false;
+		
+		if (!res.isOk()) return;
+				
 		auto pathOpt = res.unwrap();
 		if (!pathOpt) return;
 		
@@ -186,12 +195,13 @@ void LoadMacroLayer::onImportMacro(CCObject*) {
 		}
 		
 		if (geode::utils::file::writeBinary(finalPath, tempMacro.exportData(true))) {
-			this->reloadList(0);
+			self->reloadList(0);
 			
 			if (path.extension() == ".xd") {
 				FLAlertLayer::create("Warning", "Legacy .xd macros may be unstable.", "OK")->show();
 			}
 			Notification::create("Macro Imported", NotificationIcon::Success)->show();
+			self->isPickingFile = false;
 		}
 	});
 }
@@ -426,7 +436,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 		cells->addObject(cell);
 	}
 	
-	macroCountLbl->setString(fmt::format("{} Macros", std::to_string(cells->count())).c_str());
+	macroCountLbl->setString(fmt::format("{} Macros", geode::utils::numToString(cells->count())).c_str());
 	
 	if (cells->count() == 0) {
 		CCLabelBMFont* lbl = CCLabelBMFont::create(isAutosaves ? "No Autosaves" : "No Macros", "bigFont.fnt");
@@ -746,7 +756,7 @@ void MacroCell::onLoad(CCObject*) {
 	
 	geode::createQuickPopup(
 		"Warning",
-		"Replace the current <cy>" + std::to_string(Global::get().macro.inputs.size()) + "</c> macro actions?",
+		"Replace the current <cy>" + geode::utils::numToString(Global::get().macro.inputs.size()) + "</c> macro actions?",
 		"Cancel", "Yes",
 		[this](auto, bool btn2) {
 			if (btn2) {

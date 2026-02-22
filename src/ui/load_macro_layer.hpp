@@ -66,6 +66,7 @@ public:
 	bool isAutosaves = false;
 	bool isMerge = false;
 	bool invertSort = false;
+	bool isPickingFile = false;
 
 	async::TaskHolder<Result<std::optional<std::filesystem::path>>> m_importTask;
 

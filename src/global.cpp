@@ -391,8 +391,8 @@ $execute{
   auto & g = Global::get();
   
   if (!g.mod->setSavedValue("defaults_set_14", true)) {
-    g.mod->setSavedValue("render_fade_in_video", std::to_string(2));
-    g.mod->setSavedValue("render_fade_out_video", std::to_string(2));
+    g.mod->setSavedValue("render_fade_in_video", geode::utils::numToString(2));
+    g.mod->setSavedValue("render_fade_out_video", geode::utils::numToString(2));
   }
   
   if (!g.mod->setSavedValue("defaults_set_12", true)) {
@@ -414,12 +414,12 @@ $execute{
     g.mod->setSettingValue("restore_page", true);
     
     g.mod->setSavedValue("autosave_interval_enabled", false);
-    g.mod->setSavedValue("autosave_interval", std::to_string(10));
+    g.mod->setSavedValue("autosave_interval", geode::utils::numToString(10));
     g.mod->setSavedValue("autosave_checkpoint_enabled", true);
     g.mod->setSavedValue("autosave_levelend_enabled", true);
     
-    g.mod->setSavedValue("render_fade_in_video", std::to_string(2));
-    g.mod->setSavedValue("render_fade_out_video", std::to_string(2));
+    g.mod->setSavedValue("render_fade_in_video", geode::utils::numToString(2));
+    g.mod->setSavedValue("render_fade_out_video", geode::utils::numToString(2));
     
     g.mod->setSavedValue("macro_auto_stop_playing", false);
     g.mod->setSavedValue("macro_tps", 240.f);
@@ -434,7 +434,7 @@ $execute{
     
     g.mod->setSavedValue("trajectory_color1", ccc3(74, 226, 85));
     g.mod->setSavedValue("trajectory_color2", ccc3(130, 8, 8));
-    g.mod->setSavedValue("trajectory_length", std::to_string(240));
+    g.mod->setSavedValue("trajectory_length", geode::utils::numToString(240));
     
   }
   
@@ -444,16 +444,16 @@ $execute{
     g.mod->setSavedValue("render_sfx_volume", 1.f);
     g.mod->setSavedValue("render_music_volume", 1.f);
     g.mod->setSavedValue("respawn_time", 0.5f);
-    g.mod->setSavedValue("render_seconds_after", std::to_string(2));
+    g.mod->setSavedValue("render_seconds_after", geode::utils::numToString(2));
     g.mod->setSavedValue("render_record_audio", true);
     g.mod->setSavedValue("render_args", std::string("-pix_fmt yuv420p"));
     g.mod->setSavedValue("macro_noclip_p1", true);
     g.mod->setSavedValue("macro_noclip_p2", true);
     
-    g.mod->setSavedValue("render_width2", std::to_string(1920));
-    g.mod->setSavedValue("render_height", std::to_string(1080));
-    g.mod->setSavedValue("render_bitrate", std::to_string(12));
-    g.mod->setSavedValue("render_fps", std::to_string(60));
+    g.mod->setSavedValue("render_width2", geode::utils::numToString(1920));
+    g.mod->setSavedValue("render_height", geode::utils::numToString(1080));
+    g.mod->setSavedValue("render_bitrate", geode::utils::numToString(12));
+    g.mod->setSavedValue("render_fps", geode::utils::numToString(60));
     g.mod->setSavedValue("render_video_args", std::string("colorspace=all=bt709:iall=bt470bg:fast=1"));
     
     g.mod->setSavedValue("render_codec", std::string("libx264"));
@@ -464,7 +464,7 @@ $execute{
     g.mod->setSavedValue("render_record_audio", true);
     g.mod->setSavedValue("render_hide_labels", true);
     
-    g.mod->setSavedValue("macro_seed", std::to_string(1));
+    g.mod->setSavedValue("macro_seed", geode::utils::numToString(1));
     g.mod->setSavedValue("macro_speedhack", std::string("0.5"));
     g.mod->setSavedValue("macro_fps", 3);
     
@@ -524,5 +524,5 @@ $execute{
   
   g.macro.author = "N/A";
   g.macro.description = "N/A";
-  g.macro.gameVersion = geode::utils::numFromString<float>(geode::Loader::get()->getGameVersion()).unwrapOr(0.0f);
+  g.macro.gameVersion = GEODE_GD_VERSION;
 };

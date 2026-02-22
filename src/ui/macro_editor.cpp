@@ -395,7 +395,7 @@ bool MacroEditLayer::init() {
 void MacroEditLayer::loadPage(int page) {
     currentPage = page;
     
-    pageInput->setString(std::to_string(currentPage).c_str());
+    pageInput->setString(geode::utils::numToString(currentPage).c_str());
     
     if (pageMenu)
     pageMenu->removeFromParentAndCleanup(true);
@@ -510,8 +510,8 @@ void MacroEditLayer::loadPage(int page) {
 
 InputText MacroEditLayer::getInputText(input input) {
     InputText ret = {
-        std::to_string(input.frame),
-        btnNames.contains(input.button) ? btnNames.at(input.button) : std::to_string(input.button),
+        geode::utils::numToString(input.frame),
+        btnNames.contains(input.button) ? btnNames.at(input.button) : geode::utils::numToString(input.button),
         input.player2 ? "Two" : "One",
         input.down ? "Hold" : "Release"
     };
@@ -931,7 +931,7 @@ void MacroEditLayer::onClear(CCObject*) {
     
     geode::createQuickPopup(
         "Clear",
-        "Clear <cy>" + std::to_string(inputs.size()) + "</c> macro actions?",
+        "Clear <cy>" + geode::utils::numToString(inputs.size()) + "</c> macro actions?",
         "Cancel", "Yes",
         [this](auto, bool btn2) {
             if (btn2) {

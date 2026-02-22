@@ -15,11 +15,11 @@ class $modify(PlayLayer) {
         
         #ifdef GEODE_IS_WINDOWS
         if (g.state != state::none && g.frameLabel && !g.renderer.recording) {
-            m_fields->frameLabel->setString(("Frame: " + std::to_string(Global::getCurrentFrame())).c_str());
+            m_fields->frameLabel->setString(("Frame: " + geode::utils::numToString(Global::getCurrentFrame())).c_str());
         }
         #else
         if (g.state != state::none && g.frameLabel) {
-            m_fields->frameLabel->setString(("Frame: " + std::to_string(Global::getCurrentFrame())).c_str());
+            m_fields->frameLabel->setString(("Frame: " + geode::utils::numToString(Global::getCurrentFrame())).c_str());
         }
         #endif
     }

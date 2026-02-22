@@ -4386,7 +4386,7 @@ class exception : public std::exception
 
     static std::string name(const std::string& ename, int id_)
     {
-        return concat("[json.exception.", ename, '.', std::to_string(id_), "] ");
+        return concat("[json.exception.", ename, '.', geode::utils::numToString(id_), "] ");
     }
 
     static std::string diagnostics(std::nullptr_t /*leaf_element*/)
@@ -4409,7 +4409,7 @@ class exception : public std::exception
                     {
                         if (&current->m_parent->m_data.m_value.array->operator[](i) == current)
                         {
-                            tokens.emplace_back(std::to_string(i));
+                            tokens.emplace_back(geode::utils::numToString(i));
                             break;
                         }
                     }
@@ -4490,7 +4490,7 @@ class parse_error : public exception
     static parse_error create(int id_, std::size_t byte_, const std::string& what_arg, BasicJsonContext context)
     {
         const std::string w = concat(exception::name("parse_error", id_), "parse error",
-                                     (byte_ != 0 ? (concat(" at byte ", std::to_string(byte_))) : ""),
+                                     (byte_ != 0 ? (concat(" at byte ", geode::utils::numToString(byte_))) : ""),
                                      ": ", exception::diagnostics(context), what_arg);
         return {id_, byte_, w.c_str()};
     }
@@ -4512,8 +4512,8 @@ class parse_error : public exception
 
     static std::string position_string(const position_t& pos)
     {
-        return concat(" at line ", std::to_string(pos.lines_read + 1),
-                      ", column ", std::to_string(pos.chars_read_current_line));
+        return concat(" at line ", geode::utils::numToString(pos.lines_read + 1),
+                      ", column ", geode::utils::numToString(pos.chars_read_current_line));
     }
 };
 
@@ -5179,7 +5179,7 @@ template<typename string_type>
 void int_to_string( string_type& target, std::size_t value )
 {
     // For ADL
-    using std::to_string;
+    using geode::utils::numToString;
     target = to_string(value);
 }
 template<typename IteratorType> class iteration_proxy_value
@@ -6869,7 +6869,7 @@ class json_sax_dom_parser
 
         if (JSON_HEDLEY_UNLIKELY(len != static_cast<std::size_t>(-1) && len > ref_stack.back()->max_size()))
         {
-            JSON_THROW(out_of_range::create(408, concat("excessive object size: ", std::to_string(len)), ref_stack.back()));
+            JSON_THROW(out_of_range::create(408, concat("excessive object size: ", geode::utils::numToString(len)), ref_stack.back()));
         }
 
         return true;
@@ -6901,7 +6901,7 @@ class json_sax_dom_parser
 
         if (JSON_HEDLEY_UNLIKELY(len != static_cast<std::size_t>(-1) && len > ref_stack.back()->max_size()))
         {
-            JSON_THROW(out_of_range::create(408, concat("excessive array size: ", std::to_string(len)), ref_stack.back()));
+            JSON_THROW(out_of_range::create(408, concat("excessive array size: ", geode::utils::numToString(len)), ref_stack.back()));
         }
 
         return true;
@@ -7059,7 +7059,7 @@ class json_sax_dom_callback_parser
         // check object limit
         if (ref_stack.back() && JSON_HEDLEY_UNLIKELY(len != static_cast<std::size_t>(-1) && len > ref_stack.back()->max_size()))
         {
-            JSON_THROW(out_of_range::create(408, concat("excessive object size: ", std::to_string(len)), ref_stack.back()));
+            JSON_THROW(out_of_range::create(408, concat("excessive object size: ", geode::utils::numToString(len)), ref_stack.back()));
         }
 
         return true;
@@ -7129,7 +7129,7 @@ class json_sax_dom_callback_parser
         // check array limit
         if (ref_stack.back() && JSON_HEDLEY_UNLIKELY(len != static_cast<std::size_t>(-1) && len > ref_stack.back()->max_size()))
         {
-            JSON_THROW(out_of_range::create(408, concat("excessive array size: ", std::to_string(len)), ref_stack.back()));
+            JSON_THROW(out_of_range::create(408, concat("excessive array size: ", geode::utils::numToString(len)), ref_stack.back()));
         }
 
         return true;
@@ -9370,7 +9370,7 @@ class binary_reader
         {
             auto last_token = get_token_string();
             return sax->parse_error(chars_read, last_token, parse_error::create(112, chars_read,
-                                    exception_message(input_format_t::bson, concat("string length must be at least 1, is ", std::to_string(len)), "string"), nullptr));
+                                    exception_message(input_format_t::bson, concat("string length must be at least 1, is ", geode::utils::numToString(len)), "string"), nullptr));
         }
 
         return get_string(input_format_t::bson, len - static_cast<NumberType>(1), result) && get() != char_traits<char_type>::eof();
@@ -9392,7 +9392,7 @@ class binary_reader
         {
             auto last_token = get_token_string();
             return sax->parse_error(chars_read, last_token, parse_error::create(112, chars_read,
-                                    exception_message(input_format_t::bson, concat("byte array length cannot be negative, is ", std::to_string(len)), "binary"), nullptr));
+                                    exception_message(input_format_t::bson, concat("byte array length cannot be negative, is ", geode::utils::numToString(len)), "binary"), nullptr));
         }
 
         // All BSON binary values have a subtype
@@ -13920,7 +13920,7 @@ class json_pointer
     /// @sa https://json.nlohmann.me/api/json_pointer/operator_slasheq/
     json_pointer& operator/=(std::size_t array_idx)
     {
-        return *this /= std::to_string(array_idx);
+        return *this /= geode::utils::numToString(array_idx);
     }
 
     /// @brief create a new JSON pointer by appending the right JSON pointer at the end of the left JSON pointer
@@ -14243,7 +14243,7 @@ class json_pointer
                     {
                         // "-" always fails the range check
                         JSON_THROW(detail::out_of_range::create(402, detail::concat(
-                                "array index '-' (", std::to_string(ptr->m_data.m_value.array->size()),
+                                "array index '-' (", geode::utils::numToString(ptr->m_data.m_value.array->size()),
                                 ") is out of range"), ptr));
                     }
 
@@ -14300,7 +14300,7 @@ class json_pointer
                     if (JSON_HEDLEY_UNLIKELY(reference_token == "-"))
                     {
                         // "-" cannot be used for const access
-                        JSON_THROW(detail::out_of_range::create(402, detail::concat("array index '-' (", std::to_string(ptr->m_data.m_value.array->size()), ") is out of range"), ptr));
+                        JSON_THROW(detail::out_of_range::create(402, detail::concat("array index '-' (", geode::utils::numToString(ptr->m_data.m_value.array->size()), ") is out of range"), ptr));
                     }
 
                     // use unchecked array access
@@ -14350,7 +14350,7 @@ class json_pointer
                     {
                         // "-" always fails the range check
                         JSON_THROW(detail::out_of_range::create(402, detail::concat(
-                                "array index '-' (", std::to_string(ptr->m_data.m_value.array->size()),
+                                "array index '-' (", geode::utils::numToString(ptr->m_data.m_value.array->size()),
                                 ") is out of range"), ptr));
                     }
 
@@ -14555,7 +14555,7 @@ class json_pointer
                     // iterate array and use index as reference string
                     for (std::size_t i = 0; i < value.m_data.m_value.array->size(); ++i)
                     {
-                        flatten(detail::concat(reference_string, '/', std::to_string(i)),
+                        flatten(detail::concat(reference_string, '/', geode::utils::numToString(i)),
                                 value.m_data.m_value.array->operator[](i), result);
                     }
                 }
@@ -16001,7 +16001,7 @@ class binary_writer
         const auto it = name.find(static_cast<typename string_t::value_type>(0));
         if (JSON_HEDLEY_UNLIKELY(it != BasicJsonType::string_t::npos))
         {
-            JSON_THROW(out_of_range::create(409, concat("BSON key cannot contain code point U+0000 (at byte ", std::to_string(it), ")"), &j));
+            JSON_THROW(out_of_range::create(409, concat("BSON key cannot contain code point U+0000 (at byte ", geode::utils::numToString(it), ")"), &j));
             static_cast<void>(j);
         }
 
@@ -16126,7 +16126,7 @@ class binary_writer
         }
         else
         {
-            JSON_THROW(out_of_range::create(407, concat("integer number ", std::to_string(j.m_data.m_value.number_unsigned), " cannot be represented by BSON as it does not fit int64"), &j));
+            JSON_THROW(out_of_range::create(407, concat("integer number ", geode::utils::numToString(j.m_data.m_value.number_unsigned), " cannot be represented by BSON as it does not fit int64"), &j));
         }
     }
 
@@ -16149,7 +16149,7 @@ class binary_writer
 
         const std::size_t embedded_document_size = std::accumulate(std::begin(value), std::end(value), static_cast<std::size_t>(0), [&array_index](std::size_t result, const typename BasicJsonType::array_t::value_type & el)
         {
-            return result + calc_bson_element_size(std::to_string(array_index++), el);
+            return result + calc_bson_element_size(geode::utils::numToString(array_index++), el);
         });
 
         return sizeof(std::int32_t) + embedded_document_size + 1ul;
@@ -16176,7 +16176,7 @@ class binary_writer
 
         for (const auto& el : value)
         {
-            write_bson_element(std::to_string(array_index++), el);
+            write_bson_element(geode::utils::numToString(array_index++), el);
         }
 
         oa->write_character(to_char_type(0x00));
@@ -18518,7 +18518,7 @@ class serializer
                     {
                         case error_handler_t::strict:
                         {
-                            JSON_THROW(type_error::create(316, concat("invalid UTF-8 byte at index ", std::to_string(i), ": 0x", hex_bytes(byte | 0)), nullptr));
+                            JSON_THROW(type_error::create(316, concat("invalid UTF-8 byte at index ", geode::utils::numToString(i), ": 0x", hex_bytes(byte | 0)), nullptr));
                         }
 
                         case error_handler_t::ignore:
@@ -19555,9 +19555,9 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         result["name"] = "JSON for Modern C++";
         result["url"] = "https://github.com/nlohmann/json";
         result["version"]["string"] =
-            detail::concat(std::to_string(NLOHMANN_JSON_VERSION_MAJOR), '.',
-                           std::to_string(NLOHMANN_JSON_VERSION_MINOR), '.',
-                           std::to_string(NLOHMANN_JSON_VERSION_PATCH));
+            detail::concat(geode::utils::numToString(NLOHMANN_JSON_VERSION_MAJOR), '.',
+                           geode::utils::numToString(NLOHMANN_JSON_VERSION_MINOR), '.',
+                           geode::utils::numToString(NLOHMANN_JSON_VERSION_PATCH));
         result["version"]["major"] = NLOHMANN_JSON_VERSION_MAJOR;
         result["version"]["minor"] = NLOHMANN_JSON_VERSION_MINOR;
         result["version"]["patch"] = NLOHMANN_JSON_VERSION_PATCH;
@@ -19580,9 +19580,9 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         result["compiler"] = {{"family", "clang"}, {"version", __clang_version__}};
 #elif defined(__GNUC__) || defined(__GNUG__)
         result["compiler"] = {{"family", "gcc"}, {"version", detail::concat(
-                    std::to_string(__GNUC__), '.',
-                    std::to_string(__GNUC_MINOR__), '.',
-                    std::to_string(__GNUC_PATCHLEVEL__))
+                    geode::utils::numToString(__GNUC__), '.',
+                    geode::utils::numToString(__GNUC_MINOR__), '.',
+                    geode::utils::numToString(__GNUC_PATCHLEVEL__))
             }
         };
 #elif defined(__HP_cc) || defined(__HP_aCC)
@@ -19600,9 +19600,9 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
 #endif
 
 #if defined(_MSVC_LANG)
-        result["compiler"]["c++"] = std::to_string(_MSVC_LANG);
+        result["compiler"]["c++"] = geode::utils::numToString(_MSVC_LANG);
 #elif defined(__cplusplus)
-        result["compiler"]["c++"] = std::to_string(__cplusplus);
+        result["compiler"]["c++"] = geode::utils::numToString(__cplusplus);
 #else
         result["compiler"]["c++"] = "unknown";
 #endif
@@ -21249,7 +21249,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
             JSON_CATCH (std::out_of_range&)
             {
                 // create better exception explanation
-                JSON_THROW(out_of_range::create(401, detail::concat("array index ", std::to_string(idx), " is out of range"), this));
+                JSON_THROW(out_of_range::create(401, detail::concat("array index ", geode::utils::numToString(idx), " is out of range"), this));
             }
         }
         else
@@ -21272,7 +21272,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
             JSON_CATCH (std::out_of_range&)
             {
                 // create better exception explanation
-                JSON_THROW(out_of_range::create(401, detail::concat("array index ", std::to_string(idx), " is out of range"), this));
+                JSON_THROW(out_of_range::create(401, detail::concat("array index ", geode::utils::numToString(idx), " is out of range"), this));
             }
         }
         else
@@ -21928,7 +21928,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         {
             if (JSON_HEDLEY_UNLIKELY(idx >= size()))
             {
-                JSON_THROW(out_of_range::create(401, detail::concat("array index ", std::to_string(idx), " is out of range"), this));
+                JSON_THROW(out_of_range::create(401, detail::concat("array index ", geode::utils::numToString(idx), " is out of range"), this));
             }
 
             m_data.m_value.array->erase(m_data.m_value.array->begin() + static_cast<difference_type>(idx));
@@ -24080,7 +24080,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                         if (JSON_HEDLEY_UNLIKELY(idx > parent.size()))
                         {
                             // avoid undefined behavior
-                            JSON_THROW(out_of_range::create(401, detail::concat("array index ", std::to_string(idx), " is out of range"), &parent));
+                            JSON_THROW(out_of_range::create(401, detail::concat("array index ", geode::utils::numToString(idx), " is out of range"), &parent));
                         }
 
                         // default case: insert add offset
@@ -24310,7 +24310,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                 while (i < source.size() && i < target.size())
                 {
                     // recursive call to compare array values at index i
-                    auto temp_diff = diff(source[i], target[i], detail::concat(path, '/', std::to_string(i)));
+                    auto temp_diff = diff(source[i], target[i], detail::concat(path, '/', geode::utils::numToString(i)));
                     result.insert(result.end(), temp_diff.begin(), temp_diff.end());
                     ++i;
                 }
@@ -24327,7 +24327,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                     result.insert(result.begin() + end_index, object(
                     {
                         {"op", "remove"},
-                        {"path", detail::concat(path, '/', std::to_string(i))}
+                        {"path", detail::concat(path, '/', geode::utils::numToString(i))}
                     }));
                     ++i;
                 }

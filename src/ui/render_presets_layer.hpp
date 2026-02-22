@@ -22,9 +22,9 @@ private:
 
         for (int i = 0; i < 5; i++) {
             float height = 170.f - 26.5f * i;
-            std::string id = "render_slot_" + std::to_string(i + 1);
+            std::string id = "render_slot_" + geode::utils::numToString(i + 1);
 
-            CCLabelBMFont* lbl = CCLabelBMFont::create(("Slot " + std::to_string(i + 1)).c_str(), "bigFont.fnt");
+            CCLabelBMFont* lbl = CCLabelBMFont::create(("Slot " + geode::utils::numToString(i + 1)).c_str(), "bigFont.fnt");
             lbl->setPosition({63, height + 5.f});
             lbl->setScale(0.425f);
             m_mainLayer->addChild(lbl);
