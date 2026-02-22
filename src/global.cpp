@@ -524,5 +524,5 @@ $execute{
   
   g.macro.author = "N/A";
   g.macro.description = "N/A";
-  g.macro.gameVersion = 2.206;
+  g.macro.gameVersion = geode::utils::numFromString<float>(geode::Loader::get()->getGameVersion()).unwrapOr(0.0f);
 };
