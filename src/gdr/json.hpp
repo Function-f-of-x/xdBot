@@ -5179,7 +5179,7 @@ template<typename string_type>
 void int_to_string( string_type& target, std::size_t value )
 {
     // For ADL
-    using geode::utils::numToString;
+    using std::to_string;
     target = to_string(value);
 }
 template<typename IteratorType> class iteration_proxy_value
