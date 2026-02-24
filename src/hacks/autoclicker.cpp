@@ -11,6 +11,7 @@ class $modify(GJBaseGameLayer) {
         bool holding[2] = {false, false};
     };
 
+    #ifndef GEODE_IS_MACOS
     void processCommands(float dt, bool isHalfTick, bool isLastTick) {
         GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
 
@@ -52,6 +53,47 @@ class $modify(GJBaseGameLayer) {
         }
 
     }
+    #else
+    void processQueuedButtons(float dt, bool clearInputQueue) {
+        GJBaseGameLayer::processQueuedButtons(dt, clearInputQueue);
+
+        auto& g = Global::get();
+
+        if (!g.autoclicker) return;
+        if (!PlayLayer::get()) return;
+
+        auto& f = m_fields;
+        const int holdFor[2] = {g.holdFor, g.holdFor2};
+        const int releaseFor[2] = {g.releaseFor, g.releaseFor2};
+
+        for (int i = 0; i < 2; i++) { // check 2 player mode
+            bool isPlayer1 = (i == 0);
+            if ((!g.autoclickerP1 && isPlayer1) || (!g.autoclickerP2 && !isPlayer1)) continue;
+
+            if (f->framesReleasing[i] < (releaseFor[i] - 1) / (f->holding[i] ? 2.f : 1.f)) {
+                f->framesReleasing[i]++;
+                continue;
+            }
+
+            if (f->framesHolding[i] < holdFor[i]) {
+                if (f->framesHolding[i] == 0) {
+                    f->autoclick[i] = true;
+                    GJBaseGameLayer::handleButton(true, 1, Macro::flipControls() ? !isPlayer1 : isPlayer1);
+                    f->autoclick[i] = false;
+                }
+
+                f->framesHolding[i]++;
+            }
+            else {
+                f->autoclick[i] = true;
+                GJBaseGameLayer::handleButton(false, 1, Macro::flipControls() ? !isPlayer1 : isPlayer1);
+                f->autoclick[i] = false;
+
+                f->framesReleasing[i] = 0;
+                f->framesHolding[i] = 0;
+            }
+    }
+    #endif
 
     void handleButton(bool hold, int button, bool player1) {
         if (button != 1) return GJBaseGameLayer::handleButton(hold, button, player1);

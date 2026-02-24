@@ -196,7 +196,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
   struct Fields {
     bool macroInput = false;
   };
-  
+  #ifndef GEODE_IS_MACOS
   void processCommands(float dt, bool isHalfTick, bool isLastTick) {
     auto& g = Global::get();
     PlayLayer* pl = PlayLayer::get();
@@ -262,6 +262,73 @@ class $modify(BGLHook, GJBaseGameLayer) {
     if (g.state == state::playing)
     handlePlaying(Global::getCurrentFrame());
   }
+  #else
+  void processQueuedButtons(float dt, bool clearInputQueue) {
+    auto& g = Global::get();
+    PlayLayer* pl = PlayLayer::get();
+
+    if (!pl) {
+      return GJBaseGameLayer::processQueuedButtons(dt, clearInputQueue);
+    }
+
+    Global::updateSeed();
+
+    bool rendering = false;
+    #ifdef GEODE_IS_WINDOWS
+    rendering = g.renderer.recording || g.renderer.recordingAudio;
+    #endif
+
+    if (g.state != state::none || rendering) {
+      #ifdef GEODE_IS_WINDOWS
+      if (!g.firstAttempt) {
+        g.renderer.dontRender = false;
+        g.renderer.dontRecordAudio = false;
+      }
+      #endif
+      int frame = Global::getCurrentFrame();
+      if (frame > 2 && g.firstAttempt && g.macro.xdBotMacro) {
+        g.firstAttempt = false;
+        #ifndef GEODE_IS_MOBILE
+        if ((m_levelSettings->m_platformerMode || rendering) && !m_levelEndAnimationStarted)
+          return pl->resetLevelFromStart();
+        else if (!m_levelEndAnimationStarted)
+          return pl->resetLevel();
+        #endif
+      }
+
+      if (g.previousFrame == frame && frame != 0 && g.macro.xdBotMacro)
+        return GJBaseGameLayer::processQueuedButtons(dt, clearInputQueue);
+    }
+
+    GJBaseGameLayer::processQueuedButtons(dt, clearInputQueue);
+
+    if (g.state == state::none)
+      return;
+
+    int frame = Global::getCurrentFrame();
+    g.previousFrame = frame;
+
+    if (g.macro.xdBotMacro && g.restart && !m_levelEndAnimationStarted) {
+      #ifndef GEODE_IS_MOBILE
+      if ((m_levelSettings->m_platformerMode && g.state != state::none) /*|| g.renderer.recordingAudio*/)
+        return pl->resetLevelFromStart();
+      else
+        return pl->resetLevel();
+      #else
+      if (m_levelSettings->m_platformerMode && g.state != state::none)
+        return pl->resetLevelFromStart();
+      else
+        return pl->resetLevel();
+      #endif
+    }
+
+    if (g.state == state::recording)
+      handleRecording(frame);
+
+    if (g.state == state::playing)
+      handlePlaying(Global::getCurrentFrame());
+  }
+  #endif
   
   void handleRecording(int frame) {
     auto& g = Global::get();
