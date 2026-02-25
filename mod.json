@@ -96,7 +96,6 @@
 			"description": "The keybind to start and stop recording a macro.",
 			"type": "keybind",
 			"default": "Alt+G",	
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/toggle_recording"
 		},
@@ -105,7 +104,6 @@
 			"description": "The keybind to start and stop playing a macro.",
 			"type": "keybind",
 			"default": "Alt+H",
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/toggle_playing"
 		},
@@ -114,7 +112,6 @@
 			"description": "The keybind to toggle speedhack.",
 			"type": "keybind",
 			"default": "Alt+S",	
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/toggle_speedhack"
 		},
@@ -123,7 +120,6 @@
 			"description": "The keybind to toggle noclip.",
 			"type": "keybind",
 			"default": "Alt+N",	
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/toggle_noclip"
 		},
@@ -132,7 +128,6 @@
 			"description": "The keybind to toggle the frame stepper.",
 			"type": "keybind",
 			"default": "Alt+C",	
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/toggle_frame_stepper"
 		},
@@ -141,7 +136,6 @@
 			"description": "The keybind to step a frame when the frame stepper is enabled.",
 			"type": "keybind",
 			"default": "V",	
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/step_frame"
 		},
@@ -150,7 +144,6 @@
 			"description": "The keybind to toggle the trajectory while recording a macro.",
 			"type": "keybind",
 			"default": "Alt+T",
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/show_trajectory"
 		},
@@ -159,7 +152,6 @@
 			"description": "The keybind to start and stop the renderer.",
 			"type": "keybind",
 			"default": "Alt+P",
-			"platforms": ["win", "mac"],
 			"category": "gameplay",
 			"migrate-from": "zilko.xdbot/toggle_render"
 		},
@@ -172,22 +164,19 @@
 			"name": "Keybinds on editor",
 			"description": "Enables keybinds while on the level editor.",
 			"type": "bool",
-			"default": false,
-			"platforms": ["win", "mac"]
+			"default": false
 		},
 		"disable_keybinds": {
 			"name": "Disable keybinds",
 			"description": "Disables all keybinds.",
 			"type": "bool",
-			"default": false,
-			"platforms": ["win", "mac"]
+			"default": false
 		},
 		"recording_only_keybinds": {
 			"name": "Keybinds only while recording",
 			"description": "Keybinds only work while recording a macro.",
 			"type": "bool",
-			"default": false,
-			"platforms": ["win", "mac"]
+			"default": false
 		},
 		"level_settings_button": {
 			"name": "Show Button At Settings",

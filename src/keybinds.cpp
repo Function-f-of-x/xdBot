@@ -1,14 +1,12 @@
-#ifdef GEODE_IS_DESKTOP
 #include "includes.hpp"
 #include "ui/record_layer.hpp"
 #include "hacks/show_trajectory.hpp"
 
-#include <Geode/modify/CCKeyboardDispatcher.hpp>
-#include <Geode/modify/CCTouchDispatcher.hpp>
 #include <Geode/loader/SettingV3.hpp>
 #include <Geode/loader/GameEvent.hpp>
+#include <Geode/utils/Keyboard.hpp>
 
-class $modify(CCKeyboardDispatcher) {
+/* class $modify(CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(enumKeyCodes key, bool isKeyDown, bool isKeyRepeat, double time) {
         
         auto& g = Global::get();
@@ -37,7 +35,27 @@ class $modify(CCKeyboardDispatcher) {
         
         return CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat, time);
     }
-};
+};*/
+
+$on_mod(Loaded) {
+    KeyboardInputEvent().listen([](KeyboardInputData& data) {
+        auto& g = Global::get();
+        int keyInt = static_cast<int>(data.key);
+
+        bool isKeyRepeat = (data.action == KeyboardInputData::Action::Repeat);
+        bool isKeyDown = (data.action == KeyboardInputData::Action::Press);
+
+        if (g.allKeybinds.contains(keyInt) && !isKeyRepeat) {
+            for (size_t i = 0; i < 6; i++) {
+                if (std::find(g.keybinds[i].begin(), g.keybinds[i].end(), keyInt) != g.keybinds[i].end()) {
+                    g.heldButtons[i] = isKeyDown;
+                }
+            }
+        }
+
+        return ListenerResult::Propagate;
+    }).leak();
+}
 
 void handleKeybind(std::string const& id, bool down, bool repeat, double time) {
     auto& g = Global::get();
@@ -140,4 +158,3 @@ $execute{
         handleKeybind("toggle_noclip_keybind", down, false, time);
     });
 }
-#endif

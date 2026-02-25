@@ -792,12 +792,21 @@ bool Renderer::tryPause() {
 }
 
 void Renderer::startAudio(PlayLayer* pl) {
-    EndLevelLayer* endLevelLayer = pl->getChildByType<EndLevelLayer>(0);
+    Ref<EndLevelLayer> endLevelLayer = pl->getChildByType<EndLevelLayer>(0);
     if (dontRecordAudio) return;
     
     if (pl->m_levelEndAnimationStarted && endLevelLayer != nullptr) {
-        CCKeyboardDispatcher::get()->dispatchKeyboardMSG(enumKeyCodes::KEY_Space, true, false, 0.0);
-        CCKeyboardDispatcher::get()->dispatchKeyboardMSG(enumKeyCodes::KEY_Space, false, false, 0.0);
+        Loader::get()->queueInMainThread([endLevelLayer] {
+            auto retryBtn = endLevelLayer->getChildByIDRecursive("retry-button");
+            if (!retryBtn) {
+                endLevelLayer->onReplay(nullptr);
+                // log::info("Passed nullptr to onReplay because retry-button doesn't exist");
+            }
+            else {
+                endLevelLayer->onReplay(retryBtn);
+                // log::info("Passed retry-button to onReplay");
+            }
+        });
     }
     else if (!pl->m_levelEndAnimationStarted) {
         
