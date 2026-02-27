@@ -711,7 +711,7 @@ void MacroCell::handleLoad() {
 		
 		if (mergeLayer) {
 			typeinfo_cast<MacroEditLayer*>(mergeLayer)->mergeMacro(newMacro.inputs, players, static_cast<LoadMacroLayer*>(loadLayer)->owToggle->isToggled());
-			loadLayer->keyBackClicked();
+			loadLayer->onClose(nullptr);
 		}
 		
 		return;
@@ -725,7 +725,7 @@ void MacroCell::handleLoad() {
 	
 	g.macro.xdBotMacro = g.macro.botInfo.name == "xdBot";
 	
-	loadLayer->keyBackClicked();
+	loadLayer->onClose(nullptr);
 	
 	RecordLayer* newLayer = nullptr;
 	
