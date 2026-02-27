@@ -16,7 +16,7 @@ class SaveMacroLayer : public geode::Popup {
 private:
 
     bool init() override {
-        std::string defaultFormatStr = Mod::get()->getSettingValueString("default_save_format");
+        std::string defaultFormatStr = Mod::get()->getSettingValue<std::string>("default_save_format");
         if (defaultFormatStr == "GDR") {
             defaultFormat = SaveFormat::GDR1;
             selectedFormat = SaveFormat::GDR1;
