@@ -146,9 +146,8 @@ class $modify(CCScheduler) {
 };
 
 bool Renderer::shouldUseAPI() {
-    // ffmpeg api is not ported
-    return false;
-    
+    // not using it for now
+    return true;
 }
 
 bool Renderer::toggle() {

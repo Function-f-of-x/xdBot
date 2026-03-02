@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 
+// credits to Eclipse Menu
+
 namespace x86_64 {
     enum class Register64 : uint8_t {
         rax = 0, rcx  = 1, rdx  = 2, rbx  = 3,

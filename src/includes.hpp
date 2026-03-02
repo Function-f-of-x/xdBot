@@ -139,11 +139,9 @@ public:
     bool tpsEnabled = false;
     float tps = 240.f;
     
-    // Callbacks for TPS settings changes (used instead of listenForSettingChanges)
     std::function<void(bool)> onTpsEnabledChanged;
     std::function<void(double)> onTpsChanged;
     
-    // Setters that trigger callbacks
     void setTpsEnabled(bool enabled) {
         tpsEnabled = enabled;
         mod->setSavedValue("macro_tps_enabled", enabled);

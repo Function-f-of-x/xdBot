@@ -181,7 +181,7 @@ void LoadMacroLayer::onImportMacro(CCObject*) {
 			tempMacro = Macro::importData(data);
 		}
 		
-		std::string name = path.stem().string();
+		std::string name = geode::utils::string::pathToString(path.stem());
 		
 		#ifdef GEODE_IS_IOS
 		std::filesystem::path folder = Mod::get()->getSaveDir() / "macros";
@@ -189,7 +189,6 @@ void LoadMacroLayer::onImportMacro(CCObject*) {
 		std::filesystem::path folder = Mod::get()->getSettingValue<std::filesystem::path>("macros_folder");
 		#endif
 		
-		// Save imported macros as GDR2 binary
 		std::filesystem::path finalPath = folder / (name + ".gdr2");
 		int iterations = 1;
 		while (std::filesystem::exists(finalPath)) {
