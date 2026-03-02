@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Geode/loader/Mod.hpp>
-
 #include <iostream>
 #include <vector>
 #include <optional>
@@ -10,19 +8,13 @@
 
 #include <Geode/utils/VersionInfo.hpp>
 
-inline std::string getModVersionString() {
-    return geode::Mod::get()->getVersion().toVString();
-}
-
-inline int getModVersionInt() {
-    return static_cast<int>(geode::Mod::get()->getVersion().getMajor());
-}
-
 geode::prelude::VersionInfo getVersion(std::vector<std::string> nums);
 
 cocos2d::CCPoint dataFromString(std::string dataString);
 
 std::vector<std::string> splitByChar(std::string str, char splitChar);
+
+const std::string xdBotVersion = "v2.3.11";
 
 namespace gdr_legacy {
 
