@@ -110,7 +110,7 @@ geode::Result<> setupModifiedDeltaPatches() {
         return geode::Err("failed to find getModifiedDelta patch address");
     }
     
-    using namespace assembler::arm64;
+    using namespace arm64;
     auto bytes = Builder(addr)
     .ldr(Register::x9, Register::x19, offsetof(GJBaseGameLayer, m_loadingLayer))
     .nop()
@@ -139,7 +139,7 @@ geode::Result<> setupModifiedDeltaPatches() {
 void applyPatches() {
     #ifdef GEODE_IS_IOS
     if (geode::Loader::get()->isPatchless()) {
-        using namespace assembler::arm64;
+        using namespace arm64;
         g_expectedTicksPtr = std::bit_cast<TicksType*>(geode::base::get() + g_jitlessSpace);
         static_assert(GEODE_COMP_GD_VERSION == 22081, "TPS Bypass: JIT-less patch is only supported for GD 2.2081");
         #define PATCH_ADDR 0x1fe724
