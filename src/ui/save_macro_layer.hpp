@@ -100,7 +100,11 @@ private:
             jsonToggle->toggle(true);
         }
 
-        lbl = CCLabelBMFont::create("Default: GDR2", "chatFont.fnt");
+        switch (defaultFormat) {
+            case SaveFormat::GDR2: lbl = CCLabelBMFont::create("Default: GDR2", "chatFont.fnt"); break;
+            case SaveFormat::GDR1: lbl = CCLabelBMFont::create("Default: GDR", "chatFont.fnt"); break;
+            case SaveFormat::JSON: lbl = CCLabelBMFont::create("Default: JSON", "chatFont.fnt"); break;
+        }
         lbl->setPosition({ 110, -85.5 });
         lbl->setScale(0.5);
         lbl->setOpacity(100);

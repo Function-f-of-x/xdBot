@@ -442,18 +442,20 @@ void Macro::resetVariables() {
     g.ignoreFrame = -1;
     g.ignoreJumpButton = -1;
 
-    g.delayedFrameReleaseMain[0] = -1;
-    g.delayedFrameReleaseMain[1] = -1;
+    // g.delayedFrameReleaseMain[0] = -1;
+    // g.delayedFrameReleaseMain[1] = -1;
 
-    g.delayedFrameInput[0] = -1;
-    g.delayedFrameInput[1] = -1;
+    // g.delayedFrameInput[0] = -1;
+    // g.delayedFrameInput[1] = -1;
 
     g.addSideHoldingMembers[0] = false;
     g.addSideHoldingMembers[1] = false;
+    /*
     for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++)
             g.delayedFrameRelease[x][y] = -1;
     }
+    */
 }
 
 void Macro::resetState(bool cp) {

@@ -340,6 +340,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
     
     bool twoPlayers = m_levelSettings->m_twoPlayerMode;
     
+    /*
     if (g.delayedFrameInput[0] == frame) {
       g.delayedFrameInput[0] = -1;
       // if ((g.heldButtons[0] && twoPlayers) || (!twoPlayers && (g.heldButtons[0] || g.heldButtons[3])))
@@ -351,10 +352,12 @@ class $modify(BGLHook, GJBaseGameLayer) {
       // if ((g.heldButtons[3] && twoPlayers) || (!twoPlayers && (g.heldButtons[0] || g.heldButtons[3])))
       GJBaseGameLayer::handleButton(true, 1, false);
     }
+    */
     
     if (frame > g.ignoreJumpButton && g.ignoreJumpButton != -1)
     g.ignoreJumpButton = -1;
     
+    /*
     for (int x = 0; x < 2; x++) {
       if (g.delayedFrameReleaseMain[x] == frame) {
         bool player2 = x == 0;
@@ -374,6 +377,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
         }
       }
     }
+    */
     
     if (!g.frameFixes || g.macro.inputs.empty()) return;
     
@@ -477,12 +481,14 @@ class $modify(BGLHook, GJBaseGameLayer) {
     if (frame >= 10 && hold)
     Global::hasIncompatibleMods();
     
-    bool isDelayedInput = g.delayedFrameInput[(m_levelSettings->m_twoPlayerMode ? static_cast<int>(!player2) : 0)] != -1;
-    bool isDelayedRelease = g.delayedFrameReleaseMain[(m_levelSettings->m_twoPlayerMode ? static_cast<int>(!player2) : 0)] != -1;
+    bool isDelayedInput = false; // g.delayedFrameInput[(m_levelSettings->m_twoPlayerMode ? static_cast<int>(!player2) : 0)] != -1;
+    bool isDelayedRelease = false; // g.delayedFrameReleaseMain[(m_levelSettings->m_twoPlayerMode ? static_cast<int>(!player2) : 0)] != -1;
     
     if ((isDelayedInput || g.ignoreJumpButton == frame || isDelayedRelease) && button == 1) {
+      /*
       if (g.ignoreJumpButton >= frame)
       g.delayedFrameInput[(m_levelSettings->m_twoPlayerMode ? static_cast<int>(!player2) : 0)] = g.ignoreJumpButton + 1;
+      */
       
       return;
     }
