@@ -20,7 +20,6 @@ public:
         m_isValid = true;
         player->saveToCheckpoint(m_checkpoint.data());
 
-        // Full physics capture
         m_yVelocityRelated = player->m_yVelocityRelated;
         m_groundYVelocity = player->m_groundYVelocity;
         m_scaleXRelated2 = player->m_scaleXRelated2;

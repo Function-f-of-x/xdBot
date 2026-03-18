@@ -36,8 +36,7 @@ public:
         data.m_dashStartTime = player->m_dashStartTime;
         data.m_slopeStartTime = player->m_slopeStartTime;
         data.m_justPlacedStreak = player->m_justPlacedStreak;
-        
-        // We capture player follow floats which are often needed for trajectory
+         
         data.m_playerFollowFloats = player->m_playerFollowFloats;
         
         return data;
