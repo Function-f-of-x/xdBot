@@ -527,7 +527,9 @@ void MacroEditLayer::textChanged(CCTextInputNode* input) {
     if (text == "") return;
     
     if (input == editLayer->pageInput->getInputNode()) {
-        int page = geode::utils::numFromString<int>(text).unwrap();
+        auto pageRes = geode::utils::numFromString<int>(text);
+        if (pageRes.isErr()) return;
+        int page = pageRes.unwrap();
         
         if (page <= 0) return;
         
@@ -538,7 +540,9 @@ void MacroEditLayer::textChanged(CCTextInputNode* input) {
     }
     
     if (input == editLayer->frameInput->getInputNode()) {
-        int frame = geode::utils::numFromString<int>(text).unwrap();
+        auto frameRes = geode::utils::numFromString<int>(text);
+        if (frameRes.isErr()) return;
+        int frame = frameRes.unwrap();
         
         editLayer->changeSelectedInputFrame(frame, false);
         

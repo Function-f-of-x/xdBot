@@ -1,6 +1,5 @@
 #pragma once
 
-#include "includes.hpp"
 #include "gdr/gdr.hpp"
 #include "utils/utils.hpp"
 
@@ -137,7 +136,7 @@ struct button {
 struct PlayerData {
 #ifdef GEODE_IS_WINDOWS
     std::unordered_map<int, GJPointDouble> m_rotateObjectsRelated;
-    std::unordered_map<int, GameObject*> m_maybeRotatedObjectsMap;
+    std::unordered_map<int, GameObject*> m_potentialSlopeMap;
     std::unordered_set<int> m_touchedRings;
     std::unordered_set<int> m_ringRelatedSet;
     std::map<int, bool> m_jumpPadRelated;

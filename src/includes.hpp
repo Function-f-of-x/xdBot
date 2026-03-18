@@ -158,6 +158,7 @@ public:
     float previousTps = 0.f;
     bool autoclicker = false;
     bool autoclickerP1 = false;
+    bool alwaysPracticeFixes = false;
     bool autoclickerP2 = false;
     int holdFor = 0;
     int releaseFor = 0;

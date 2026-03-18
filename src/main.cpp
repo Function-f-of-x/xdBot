@@ -152,7 +152,7 @@ class $modify(PlayLayer) {
     if (g.state == state::recording)
     Macro::updateInfo(this);
     
-    if ((!m_isPracticeMode || frame <= 1 || g.checkpoints.empty()) && g.state == state::recording) {
+    if ((!m_isPracticeMode || frame <= 1 || (g.checkpoints.empty() && m_checkpointArray->count() <= 0)) && g.state == state::recording) {
       g.macro.inputs.clear();
       g.macro.frameFixes.clear();
       g.checkpoints.clear();
@@ -163,7 +163,8 @@ class $modify(PlayLayer) {
       PlayerData p1Data = PlayerPracticeFixes::saveData(m_player1);
       PlayerData p2Data = PlayerPracticeFixes::saveData(m_player2);
       
-      InputPracticeFixes::applyFixes(this, p1Data, p2Data, frame);
+      PlayerPracticeFixes::applyData(m_player1, p1Data, false, false);
+      PlayerPracticeFixes::applyData(m_player2, p2Data, true, false);
       Macro::resetVariables();
       
       m_player1->m_holdingRight = false;
@@ -177,7 +178,7 @@ class $modify(PlayLayer) {
       m_player2->m_holdingButtons[3] = false;
     }
     
-    if (!m_levelSettings->m_platformerMode || (!g.mod->getSavedValue<bool>("macro_always_practice_fixes") && g.state != state::recording)) return;
+    if (!m_levelSettings->m_platformerMode || (!g.alwaysPracticeFixes && g.state != state::recording)) return;
     
     g.ignoreRecordAction = true;
     for (int i = 0; i < 4; i++) {

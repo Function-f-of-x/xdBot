@@ -407,6 +407,7 @@ class $modify(PauseLayer) {
         if (id == "clickbot_holding_only") g.clickbotOnlyHolding = value;
         if (id == "macro_tps_enabled") g.setTpsEnabled(value);
         if (id == "autoclicker_enabled") g.autoclicker = value;
+        if (id == "macro_always_practice_fixes") g.alwaysPracticeFixes = value;
         if (id == "disable_shaders") g.disableShaders = value;
         if (id == "macro_auto_save") g.autosaveEnabled = value;
         
@@ -998,11 +999,13 @@ class $modify(PauseLayer) {
                         }
                         
                         void RecordLayer::setToggleMember(CCMenuItemToggler* toggle, std::string id) {
+                            auto& g = Global::get();
                             if (id == "macro_speedhack_enabled") speedhackToggle = toggle;
                             if (id == "macro_show_trajectory") trajectoryToggle = toggle;
                             if (id == "macro_noclip") noclipToggle = toggle;
                             if (id == "macro_frame_stepper") frameStepperToggle = toggle;
                             if (id == "macro_tps_enabled") tpsToggle = toggle;
+                            if (id == "macro_always_practice_fixes") g.alwaysPracticeFixes = toggle->isToggled();
                         }
                         
                         void RecordLayer::loadSetting(RecordSetting sett, float yPos) {
