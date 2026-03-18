@@ -275,26 +275,20 @@ class $modify(BGLHook, GJBaseGameLayer) {
     Global::updateSeed();
 
     bool rendering = false;
-    #ifdef GEODE_IS_WINDOWS
-    rendering = g.renderer.recording || g.renderer.recordingAudio;
-    #endif
+    /*rendering = g.renderer.recording || g.renderer.recordingAudio;*/
 
     if (g.state != state::none || rendering) {
-      #ifdef GEODE_IS_WINDOWS
-      if (!g.firstAttempt) {
+      /*if (!g.firstAttempt) {
         g.renderer.dontRender = false;
         g.renderer.dontRecordAudio = false;
-      }
-      #endif
+      }*/
       int frame = Global::getCurrentFrame();
       if (frame > 2 && g.firstAttempt && g.macro.xdBotMacro) {
         g.firstAttempt = false;
-        #ifndef GEODE_IS_MOBILE
         if ((m_isPlatformer || rendering) && !m_levelEndAnimationStarted)
           return pl->resetLevelFromStart();
         else if (!m_levelEndAnimationStarted)
           return pl->resetLevel();
-        #endif
       }
 
       if (g.previousFrame == frame && frame != 0 && g.macro.xdBotMacro)
@@ -310,17 +304,10 @@ class $modify(BGLHook, GJBaseGameLayer) {
     g.previousFrame = frame;
 
     if (g.macro.xdBotMacro && g.restart && !m_levelEndAnimationStarted) {
-      #ifndef GEODE_IS_MOBILE
       if ((m_isPlatformer && g.state != state::none) /*|| g.renderer.recordingAudio*/)
         return pl->resetLevelFromStart();
       else
         return pl->resetLevel();
-      #else
-      if (m_isPlatformer && g.state != state::none)
-        return pl->resetLevelFromStart();
-      else
-        return pl->resetLevel();
-      #endif
     }
 
     if (g.state == state::recording)
