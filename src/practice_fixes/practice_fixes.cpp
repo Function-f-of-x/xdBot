@@ -1,4 +1,4 @@
-#include "GameCheckpoint.hpp"
+#include "checkpoint.hpp"
 #include "practice_fixes.hpp"
 #include <Geode/modify/PlayLayer.hpp>
 

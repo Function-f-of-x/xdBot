@@ -173,6 +173,7 @@ public:
     bool addSideHoldingMembers[2] = { false, false };
     bool wasHolding[6] = { false, false, false, false, false, false };
     bool heldButtons[6] = { false, false, false, false, false, false };
+    bool respawnHeldButtons[6] = { false, false, false, false, false, false };
 
     int delayedFrameRelease[2][2] = { { -1, -1 }, { -1, -1 } };
     int delayedFrameReleaseMain[2] = { -1, -1 };

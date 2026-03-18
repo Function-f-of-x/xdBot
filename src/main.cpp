@@ -76,7 +76,7 @@ class $modify(PlayLayer) {
       handleButton(false, 1, false);
       g.macro.inputs.push_back(input(frame, 1, false, false));
     }
-    if (m_levelSettings->m_platformerMode) {
+    if (m_isPlatformer) {
       if (m_player1->m_holdingButtons[2]) {
         handleButton(false, 2, false);
         g.macro.inputs.push_back(input(frame, 2, false, false));
@@ -92,7 +92,7 @@ class $modify(PlayLayer) {
         handleButton(false, 1, true);
         g.macro.inputs.push_back(input(frame, 1, true, false));
       }
-      if (m_levelSettings->m_platformerMode) {
+      if (m_isPlatformer) {
         if (m_player2->m_holdingButtons[2]) {
           handleButton(false, 2, false);
           g.macro.inputs.push_back(input(frame, 2, true, false));
@@ -135,7 +135,7 @@ class $modify(PlayLayer) {
       g.renderer.levelStartFrame = frame;
     #endif
     
-    if (g.restart && m_levelSettings->m_platformerMode && g.state != state::none)
+    if (g.restart && m_isPlatformer && g.state != state::none)
     m_fields->delayedLevelRestart = frame + 2;
     
     Global::updateSeed(true);
@@ -178,7 +178,7 @@ class $modify(PlayLayer) {
       m_player2->m_holdingButtons[3] = false;
     }
     
-    if (!m_levelSettings->m_platformerMode || (!g.alwaysPracticeFixes && g.state != state::recording)) return;
+    if (!m_isPlatformer || (!g.alwaysPracticeFixes && g.state != state::recording)) return;
     
     g.ignoreRecordAction = true;
     for (int i = 0; i < 4; i++) {
@@ -224,7 +224,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
       if (frame > 2 && g.firstAttempt && g.macro.xdBotMacro) {
         g.firstAttempt = false;
         #ifndef GEODE_IS_MOBILE
-        if ((m_levelSettings->m_platformerMode || rendering) && !m_levelEndAnimationStarted)
+        if ((m_isPlatformer || rendering) && !m_levelEndAnimationStarted)
         return pl->resetLevelFromStart();
         else if (!m_levelEndAnimationStarted)
         return pl->resetLevel();
@@ -245,12 +245,12 @@ class $modify(BGLHook, GJBaseGameLayer) {
     
     if (g.macro.xdBotMacro && g.restart && !m_levelEndAnimationStarted) {
       #ifndef GEODE_IS_MOBILE
-      if ((m_levelSettings->m_platformerMode && g.state != state::none) /*|| g.renderer.recordingAudio*/)
+      if ((m_isPlatformer && g.state != state::none) /*|| g.renderer.recordingAudio*/)
       return pl->resetLevelFromStart();
       else
       return pl->resetLevel();
       #else
-      if (m_levelSettings->m_platformerMode && g.state != state::none)
+      if (m_isPlatformer && g.state != state::none)
       return pl->resetLevelFromStart();
       else
       return pl->resetLevel();
@@ -290,7 +290,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
       if (frame > 2 && g.firstAttempt && g.macro.xdBotMacro) {
         g.firstAttempt = false;
         #ifndef GEODE_IS_MOBILE
-        if ((m_levelSettings->m_platformerMode || rendering) && !m_levelEndAnimationStarted)
+        if ((m_isPlatformer || rendering) && !m_levelEndAnimationStarted)
           return pl->resetLevelFromStart();
         else if (!m_levelEndAnimationStarted)
           return pl->resetLevel();
@@ -311,12 +311,12 @@ class $modify(BGLHook, GJBaseGameLayer) {
 
     if (g.macro.xdBotMacro && g.restart && !m_levelEndAnimationStarted) {
       #ifndef GEODE_IS_MOBILE
-      if ((m_levelSettings->m_platformerMode && g.state != state::none) /*|| g.renderer.recordingAudio*/)
+      if ((m_isPlatformer && g.state != state::none) /*|| g.renderer.recordingAudio*/)
         return pl->resetLevelFromStart();
       else
         return pl->resetLevel();
       #else
-      if (m_levelSettings->m_platformerMode && g.state != state::none)
+      if (m_isPlatformer && g.state != state::none)
         return pl->resetLevelFromStart();
       else
         return pl->resetLevel();
@@ -365,7 +365,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
         GJBaseGameLayer::handleButton(false, 1, twoPlayers ? player2 : false);
       }
       
-      if (!m_levelSettings->m_platformerMode)
+      if (!m_isPlatformer)
       continue;
       
       for (int y = 0; y < 2; y++) {
@@ -504,9 +504,15 @@ class $modify(BGLHook, GJBaseGameLayer) {
     player2 = false;
     
     if (!g.ignoreRecordAction && !g.creatingTrajectory && !m_player1->m_isDead) {
-      g.macro.recordAction(frame, button, player2, hold);
-      if (g.p2mirror && m_gameState.m_isDualMode)
-      g.macro.recordAction(frame, button, !player2, g.mod->getSavedValue<bool>("p2_input_mirror_inverted") ? !hold : hold);
+      if (!g.respawnHeldButtons[button]) {
+        g.macro.recordAction(frame, button, player2, hold);
+        if (g.p2mirror && m_gameState.m_isDualMode)
+        g.macro.recordAction(frame, button, !player2, g.mod->getSavedValue<bool>("p2_input_mirror_inverted") ? !hold : hold);
+      } else {
+        if (frame > g.respawnFrame + 5) {
+          g.respawnHeldButtons[button] = false;
+        }
+      }
     }
     
   }

@@ -249,10 +249,11 @@ class $modify(PauseLayer) {
             g.macro.xdBotMacro = g.macro.botInfo.name == "xdBot";
             
             PlayLayer* pl = PlayLayer::get();
+            PlayLayer* plScene = CCScene::get()->getChildByType<PlayLayer>(0);
             
-            if (pl) {
+            if (pl && plScene) {
                 if (!pl->m_isPaused && !pl->m_levelEndAnimationStarted)
-                pl->m_levelSettings->m_platformerMode ? pl->resetLevelFromStart() : pl->resetLevel();
+                pl->m_isPlatformer ? pl->resetLevelFromStart() : pl->resetLevel();
                 else
                 g.restart = true;
             }

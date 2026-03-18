@@ -14,7 +14,7 @@ public:
         auto& g = Global::get();
         if (g.state != state::none) return true;
         
-        if (g.alwaysPracticeFixes && pl->m_levelSettings->m_platformerMode) return true;
+        if (g.alwaysPracticeFixes && pl->m_isPlatformer) return true;
         
         return false;
     }

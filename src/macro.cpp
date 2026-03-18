@@ -42,7 +42,7 @@ bool Macro::flipControls() {
     PlayLayer* pl = PlayLayer::get();
     if (!pl) return GameManager::get()->getGameVariable(GameVar::Flip2PlayerControls);
 
-    return pl->m_levelSettings->m_platformerMode ? false : GameManager::get()->getGameVariable(GameVar::Flip2PlayerControls);
+    return pl->m_isPlatformer ? false : GameManager::get()->getGameVariable(GameVar::Flip2PlayerControls);
 }
 
 void Macro::autoSave(GJGameLevel* level, int number) {

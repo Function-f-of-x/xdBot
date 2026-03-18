@@ -738,7 +738,7 @@ void Renderer::captureFrame() {
 int wa = 0;
 void Renderer::handleRecording(PlayLayer* pl, int frame) {
     if (!pl) stop(frame);
-    isPlatformer = pl->m_levelSettings->m_platformerMode;
+    isPlatformer = pl->m_isPlatformer;
     if (dontRender || pl->m_player1->m_isDead) return;
     
     auto& g = Global::get();
