@@ -610,17 +610,11 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	
 	lbl->setPosition({ 10, 23 });
 	
-	#ifdef GEODE_IS_WINDOWS
 	std::string subText = Utils::formatTime(date) + " | ";
 	
 	subText += autosave ? "Auto Save" : geode::utils::string::pathToString(path.extension());
 	
 	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
-	#else
-	std::string subText = autosave ? "Auto Save" : geode::utils::string::pathToString(path.extension());
-	
-	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
-	#endif
 	
 	lbl->setPosition({ 10, 9 });
 	lbl->setScale(0.55f);

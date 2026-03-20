@@ -268,7 +268,9 @@ class $modify(FrameCounterGJBaseGameLayer, GJBaseGameLayer) {
         bool isPlaying = playLayer && 
             !playLayer->m_hasCompletedLevel &&
             !playLayer->m_isPaused &&
-            playLayer->m_gameState.m_currentProgress > 0;
+            playLayer->m_gameState.m_currentProgress > 0 &&
+            !playLayer->m_player1->m_isDead &&
+            (!playLayer->m_gameState.m_isDualMode || !playLayer->m_player2->m_isDead);
         
         g.m_isHalfTick = isHalfTick;
         GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);

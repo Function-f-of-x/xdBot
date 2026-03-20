@@ -4,11 +4,15 @@ std::time_t Utils::getFileCreationTime(const std::filesystem::path &path) {
     if (!std::filesystem::exists(path)) return 0;
     
     auto ftime = std::filesystem::last_write_time(path);
-    return std::chrono::system_clock::to_time_t(
-        std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-            ftime - decltype(ftime)::clock::now() + std::chrono::system_clock::now()
-        )
+    
+    using namespace std::chrono;
+    using file_clock = decltype(ftime)::clock;
+    
+    const auto file_time = time_point_cast<system_clock::duration>(
+        ftime - file_clock::now() + system_clock::now()
     );
+    
+    return system_clock::to_time_t(file_time);
 } // i really wanted to use asp here but seems like you cannot do this with asp :( - slideglide
 
 std::string Utils::formatTime(std::time_t time) {
