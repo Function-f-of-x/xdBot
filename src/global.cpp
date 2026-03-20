@@ -84,8 +84,10 @@ bool Global::hasIncompatibleMods() {
       if (jsonResult) {
         auto jsonData = jsonResult.unwrap();
         if (jsonData.contains("fps_value")) {
-          if (jsonData["fps_value"].asDouble() != 240)
-          settingsToDisable.push_back("<cr>TPS Bypass (GDH)</c>");
+          auto fpsValue = jsonData["fps_value"].asDouble();
+          if (fpsValue.isOk() && fpsValue.unwrap() != 240) {
+            settingsToDisable.push_back("<cr>TPS Bypass (GDH)</c>");
+          }
         }
       }
     }

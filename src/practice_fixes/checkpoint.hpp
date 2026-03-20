@@ -30,9 +30,9 @@ struct SupplementalPlayerState {
     bool m_holdingRight = false;
     bool m_holdingLeft = false;
     bool m_leftPressedFirst = false;
-    std::map<int, bool> m_holdingButtons;
-    std::unordered_map<int, GJPointDouble> m_rotateObjectsRelated;
-    std::unordered_map<int, GameObject*> m_potentialSlopeMap;
+    gd::map<int, bool> m_holdingButtons;
+    gd::unordered_map<int, GJPointDouble> m_rotateObjectsRelated;
+    gd::unordered_map<int, GameObject*> m_potentialSlopeMap;
 
     SupplementalPlayerState() = default;
 
