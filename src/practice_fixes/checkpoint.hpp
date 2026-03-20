@@ -60,9 +60,16 @@ struct SupplementalPlayerState {
         m_holdingRight          = p->m_holdingRight;
         m_holdingLeft           = p->m_holdingLeft;
         m_leftPressedFirst      = p->m_leftPressedFirst;
-        m_holdingButtons        = p->m_holdingButtons;
-        m_rotateObjectsRelated  = p->m_rotateObjectsRelated;
-        m_potentialSlopeMap = p->m_potentialSlopeMap;
+        
+        for (auto const& pair : p->m_holdingButtons) {
+            m_holdingButtons.insert(pair);
+        }
+        for (auto const& pair : p->m_rotateObjectsRelated) {
+            m_rotateObjectsRelated.insert(pair);
+        }
+        for (auto const& pair : p->m_potentialSlopeMap) {
+            m_potentialSlopeMap.insert(pair);
+        }
     }
 
     void apply(PlayerObject* p) const {
@@ -89,9 +96,19 @@ struct SupplementalPlayerState {
         p->m_holdingRight         = m_holdingRight;
         p->m_holdingLeft          = m_holdingLeft;
         p->m_leftPressedFirst     = m_leftPressedFirst;
-        p->m_holdingButtons       = m_holdingButtons;
-        p->m_rotateObjectsRelated = m_rotateObjectsRelated;
-        p->m_potentialSlopeMap = m_potentialSlopeMap;
+        
+        p->m_holdingButtons.clear();
+        for (auto const& pair : m_holdingButtons) {
+            p->m_holdingButtons.insert(pair);
+        }
+        p->m_rotateObjectsRelated.clear();
+        for (auto const& pair : m_rotateObjectsRelated) {
+            p->m_rotateObjectsRelated.insert(pair);
+        }
+        p->m_potentialSlopeMap.clear();
+        for (auto const& pair : m_potentialSlopeMap) {
+            p->m_potentialSlopeMap.insert(pair);
+        }
     }
 };
 
