@@ -35,6 +35,10 @@ struct SupplementalPlayerState {
     gd::unordered_map<int, GameObject*> m_potentialSlopeMap;
 
     SupplementalPlayerState() = default;
+    SupplementalPlayerState(const SupplementalPlayerState&) = delete;
+    SupplementalPlayerState& operator=(const SupplementalPlayerState&) = delete;
+    SupplementalPlayerState(SupplementalPlayerState&&) = delete;
+    SupplementalPlayerState& operator=(SupplementalPlayerState&&) = delete;
 
     SupplementalPlayerState(PlayerObject* p) {
         if (!p) return;
