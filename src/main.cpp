@@ -132,8 +132,6 @@ class $modify(PlayLayer) {
     
     auto& g = Global::get();
     
-    // Don't reset m_frameCount when checkpoints exist - the checkpoint restore handles the frame
-    // Only reset when starting fresh (no checkpoints)
     if (!hadCheckpoints) {
         g.m_frameCount = 0;
     }
