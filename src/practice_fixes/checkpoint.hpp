@@ -30,7 +30,7 @@ struct SupplementalPlayerState {
     bool m_holdingRight = false;
     bool m_holdingLeft = false;
     bool m_leftPressedFirst = false;
-    gd::map<int, bool> m_holdingButtons;
+    // gd::map<int, bool> m_holdingButtons;
     #ifndef GEODE_IS_ANDROID
     std::unordered_map<int, GJPointDouble> m_rotateObjectsRelated;
     std::unordered_map<int, GameObject*> m_potentialSlopeMap;
@@ -62,7 +62,7 @@ struct SupplementalPlayerState {
         m_holdingRight          = p->m_holdingRight;
         m_holdingLeft           = p->m_holdingLeft;
         m_leftPressedFirst      = p->m_leftPressedFirst;
-        m_holdingButtons        = p->m_holdingButtons;
+        // m_holdingButtons        = p->m_holdingButtons;
         #ifndef GEODE_IS_ANDROID
         m_rotateObjectsRelated  = p->m_rotateObjectsRelated;
         m_potentialSlopeMap     = p->m_potentialSlopeMap;
@@ -93,7 +93,7 @@ struct SupplementalPlayerState {
         p->m_holdingRight         = m_holdingRight;
         p->m_holdingLeft          = m_holdingLeft;
         p->m_leftPressedFirst     = m_leftPressedFirst;
-        p->m_holdingButtons       = m_holdingButtons;
+        // p->m_holdingButtons       = m_holdingButtons;
         #ifndef GEODE_IS_ANDROID
         p->m_rotateObjectsRelated = m_rotateObjectsRelated;
         p->m_potentialSlopeMap = m_potentialSlopeMap;

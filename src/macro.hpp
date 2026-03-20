@@ -139,7 +139,7 @@ struct PlayerData {
     std::unordered_set<int> m_touchedRings;
     std::unordered_set<int> m_ringRelatedSet;
     std::map<int, bool> m_jumpPadRelated;
-    std::map<int, bool> m_holdingButtons;
+    // std::map<int, bool> m_holdingButtons;
 
     cocos2d::CCPoint position;
     float rotation;
