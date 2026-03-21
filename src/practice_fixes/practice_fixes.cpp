@@ -2,6 +2,8 @@
 #include "practice_fixes.hpp"
 #include <Geode/modify/PlayLayer.hpp>
 
+void resetTPSBypassState();
+
 struct PracticeCheckpointData {
     SupplementalPlayerState    p1, p2;
     SupplementalPlayLayerState pl;
@@ -40,6 +42,8 @@ class $modify(FixPlayLayer, PlayLayer) {
         
         PlayLayer::loadFromCheckpoint(checkpoint);
         
+        resetTPSBypassState();
+        
         auto* fields = m_fields.self();
         
         if (shouldFix) {
@@ -66,6 +70,15 @@ class $modify(FixPlayLayer, PlayLayer) {
                 auto frameIt = fields->m_checkpointFrames.find(checkpoint);
                 if (frameIt != fields->m_checkpointFrames.end()) {
                     g.m_frameCount = frameIt->second;
+                    int targetFrame = g.m_frameCount - g.frameOffset;
+                    g.currentAction = 0;
+                    while (g.currentAction < g.macro.inputs.size() && g.macro.inputs[g.currentAction].frame < targetFrame) {
+                        g.currentAction++;
+                    }
+                    g.currentFrameFix = 0;
+                    while (g.currentFrameFix < g.macro.frameFixes.size() && g.macro.frameFixes[g.currentFrameFix].frame < targetFrame) {
+                        g.currentFrameFix++;
+                    }
                 }
                 g.ignoreRecordAction = false;
             }

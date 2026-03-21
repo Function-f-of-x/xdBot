@@ -38,6 +38,10 @@ TicksType& expectedTicks() { return *g_expectedTicksPtr; }
 TicksType& expectedTicks() { return g_expectedTicks; }
 #endif
 
+void resetTPSBypassState() {
+    g_expectedTicks = 0;
+}
+
 size_t getBaseSize() {
     #ifdef GEODE_IS_WINDOWS
     MODULEINFO info;
