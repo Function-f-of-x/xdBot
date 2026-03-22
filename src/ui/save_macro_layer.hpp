@@ -10,6 +10,7 @@ class SaveMacroLayer : public geode::Popup {
     CCMenuItemSpriteExtra* leftArrow = nullptr;
     CCMenuItemSpriteExtra* rightArrow = nullptr;
     CCLabelBMFont* formatLabel = nullptr;
+    CCLabelBMFont* arrowLabel = nullptr;
     
     SaveFormat selectedFormat = SaveFormat::GDR2;
     SaveFormat defaultFormat = SaveFormat::GDR2;
@@ -43,6 +44,11 @@ class SaveMacroLayer : public geode::Popup {
         CCMenu* menu = CCMenu::create();
         m_mainLayer->addChild(menu);
         
+        nameInput = TextInput::create(104, "Name", "chatFont.fnt");
+        nameInput->setPosition({ -61, 50 });
+        nameInput->setString(Global::get().macro.levelInfo.name);
+        menu->addChild(nameInput);
+        
         authorInput = TextInput::create(104, "Author", "chatFont.fnt");
         authorInput->setPosition({ 61, 50 });
         authorInput->setString(GJAccountManager::sharedState()->m_username.c_str());
@@ -54,50 +60,78 @@ class SaveMacroLayer : public geode::Popup {
         lbl->setScale(0.575);
         menu->addChild(lbl);
         
-        nameInput = TextInput::create(104, "Name", "chatFont.fnt");
-        nameInput->setPosition({ -61, 50 });
-        
-        nameInput->setString(Global::get().macro.levelInfo.name);
-        
-        menu->addChild(nameInput);
-        
         descInput = TextInput::create(226, "Description (optional)", "chatFont.fnt");
         descInput->setPositionY(0);
         menu->addChild(descInput);
         
         ButtonSprite* spr = ButtonSprite::create("Save");
         spr->setScale(0.725f);
-        CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(SaveMacroLayer::onSave));
+        CCMenuItemSpriteExtra* btn = CCMenuItemExt::createSpriteExtra(
+            spr,
+            [this](CCMenuItemSpriteExtra* saveBtn) {
+                std::string macroName = nameInput->getString();
+                if (macroName == "")
+                return FLAlertLayer::create("Save Macro", "Give a <cl>name</c> to the macro.", "OK")->show();
+                
+                #ifdef GEODE_IS_IOS
+                std::filesystem::path path = Mod::get()->getSaveDir() / "macros" / macroName;
+                #else
+                std::filesystem::path path = Mod::get()->getSettingValue<std::filesystem::path>("macros_folder") / macroName;
+                #endif
+                std::string author = authorInput->getString();
+                std::string desc = descInput->getString();
+                
+                int result = Macro::save(author, desc, geode::utils::string::pathToString(path), selectedFormat);
+                
+                if (result != 0)
+                return FLAlertLayer::create("Error", "There was an error saving the macro. ID: " + geode::utils::numToString(result), "OK")->show();
+                
+                this->keyBackClicked();
+                Notification::create("Macro Saved", NotificationIcon::Success)->show();
+            }
+        );
         btn->setPositionY(-48);
         menu->addChild(btn);
         
         CCSprite* leftSpr = CCSprite::createWithSpriteFrameName("navArrowBtn_001.png");
         leftSpr->setFlipX(true);
         leftSpr->setScale(0.4f);
-        leftArrow = CCMenuItemSpriteExtra::create(leftSpr, this, menu_selector(SaveMacroLayer::onLeftArrow));
+        leftArrow = CCMenuItemExt::createSpriteExtra(
+            leftSpr,
+            [this](CCMenuItemSpriteExtra* leftBtn) {
+                int current = static_cast<int>(selectedFormat);
+                current = (current - 1 + 3) % 3;
+                selectedFormat = static_cast<SaveFormat>(current);
+                updateFormatLabel();
+            }
+        );
         leftArrow->setPosition({ -128, -86 });
         menu->addChild(leftArrow);
         
-        formatLabel = CCLabelBMFont::create("", "bigFont.fnt");
-        formatLabel->setPosition({ -100, -85.5f });
+        formatLabel = CCLabelBMFont::create("", "chatFont.fnt");
+        formatLabel->setPosition({ 114, -90.50f });
         formatLabel->setScale(0.5f);
+        formatLabel->setOpacity(100);
         menu->addChild(formatLabel);
+        
+        arrowLabel = CCLabelBMFont::create("", "bigFont.fnt");
+        arrowLabel->setPosition({ -88, -85.5f });
+        arrowLabel->setScale(0.550f);
+        menu->addChild(arrowLabel);
         
         CCSprite* rightSpr = CCSprite::createWithSpriteFrameName("navArrowBtn_001.png");
         rightSpr->setScale(0.4f);
-        rightArrow = CCMenuItemSpriteExtra::create(rightSpr, this, menu_selector(SaveMacroLayer::onRightArrow));
+        rightArrow = CCMenuItemExt::createSpriteExtra(
+            rightSpr,
+            [this](CCMenuItemSpriteExtra* rightBtn) {
+                int current = static_cast<int>(selectedFormat);
+                current = (current + 1) % 3;
+                selectedFormat = static_cast<SaveFormat>(current);
+                updateFormatLabel();
+            }
+        );
         rightArrow->setPosition({ -48, -86 });
         menu->addChild(rightArrow);
-        
-        switch (defaultFormat) {
-            case SaveFormat::GDR2: lbl = CCLabelBMFont::create("Default: GDR2", "chatFont.fnt"); break;
-            case SaveFormat::GDR1: lbl = CCLabelBMFont::create("Default: GDR", "chatFont.fnt"); break;
-            case SaveFormat::JSON: lbl = CCLabelBMFont::create("Default: JSON", "chatFont.fnt"); break;
-        }
-        lbl->setPosition({ -88, -85.5 });
-        lbl->setScale(0.5);
-        lbl->setOpacity(100);
-        menu->addChild(lbl);
         
         updateFormatLabel();
         
@@ -105,25 +139,23 @@ class SaveMacroLayer : public geode::Popup {
     }
     
     void updateFormatLabel() {
+        bool isDefault = (selectedFormat == defaultFormat);
+        const char* prefix = isDefault ? "Default" : "Format";
+        
         switch (selectedFormat) {
-            case SaveFormat::GDR2: formatLabel->setString("GDR2"); break;
-            case SaveFormat::GDR1: formatLabel->setString("GDR"); break;
-            case SaveFormat::JSON: formatLabel->setString("JSON"); break;
+            case SaveFormat::GDR2:
+            formatLabel->setString(fmt::format("{}: GDR2", prefix).c_str());
+            arrowLabel->setString("GDR2");
+            break;
+            case SaveFormat::GDR1:
+            formatLabel->setString(fmt::format("{}: GDR", prefix).c_str());
+            arrowLabel->setString("GDR");
+            break;
+            case SaveFormat::JSON:
+            formatLabel->setString(fmt::format("{}: JSON", prefix).c_str());
+            arrowLabel->setString("JSON");
+            break;
         }
-    }
-    
-    void onLeftArrow(CCObject*) {
-        int current = static_cast<int>(selectedFormat);
-        current = (current - 1 + 3) % 3;
-        selectedFormat = static_cast<SaveFormat>(current);
-        updateFormatLabel();
-    }
-    
-    void onRightArrow(CCObject*) {
-        int current = static_cast<int>(selectedFormat);
-        current = (current + 1) % 3;
-        selectedFormat = static_cast<SaveFormat>(current);
-        updateFormatLabel();
     }
     
     public:
@@ -148,28 +180,5 @@ class SaveMacroLayer : public geode::Popup {
         SaveMacroLayer* layerReal = create();
         layerReal->m_noElasticity = true;
         layerReal->show();
-    }
-    
-    void onSave(CCObject*) {
-        std::string macroName = nameInput->getString();
-        if (macroName == "")
-        return FLAlertLayer::create("Save Macro", "Give a <cl>name</c> to the macro.", "OK")->show();
-        
-        #ifdef GEODE_IS_IOS
-        std::filesystem::path path = Mod::get()->getSaveDir() / "macros" / macroName;
-        #else
-        std::filesystem::path path = Mod::get()->getSettingValue<std::filesystem::path>("macros_folder") / macroName;
-        #endif
-        std::string author = authorInput->getString();
-        std::string desc = descInput->getString();
-        
-        int result = Macro::save(author, desc, geode::utils::string::pathToString(path), selectedFormat);
-        
-        if (result != 0)
-        return FLAlertLayer::create("Error", "There was an error saving the macro. ID: " + geode::utils::numToString(result), "OK")->show();
-        
-        this->keyBackClicked();
-        Notification::create("Macro Saved", NotificationIcon::Success)->show();
-    }
-    
+    }    
 };
