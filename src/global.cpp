@@ -458,7 +458,6 @@ $execute{
     g.mod->setSavedValue("render_music_volume", 1.f);
     g.mod->setSavedValue("respawn_time", 0.5f);
     g.mod->setSavedValue("render_seconds_after", geode::utils::numToString(2));
-    g.mod->setSavedValue("render_record_audio", true);
     g.mod->setSavedValue("render_args", std::string("-pix_fmt yuv420p"));
     g.mod->setSavedValue("macro_noclip_p1", true);
     g.mod->setSavedValue("macro_noclip_p2", true);
@@ -474,7 +473,6 @@ $execute{
     g.mod->setSettingValue("ffmpeg_path", geode::dirs::getGameDir() / "ffmpeg.exe");
     #endif
     
-    g.mod->setSavedValue("render_record_audio", true);
     g.mod->setSavedValue("render_hide_labels", true);
     
     g.mod->setSavedValue("macro_seed", geode::utils::numToString(1));

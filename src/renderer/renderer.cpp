@@ -1,57 +1,55 @@
 #include "../includes.hpp"
 #include "../ui/game_ui.hpp"
-#include "../utils/subprocess.hpp"
+#include "DSPRecorder.hpp"
 
+#include <Geode/modify/CCCircleWave.hpp>
+#include <Geode/modify/CCParticleSystemQuad.hpp>
+#include <Geode/modify/CCScheduler.hpp>
+#include <Geode/modify/EndLevelLayer.hpp>
 #include <Geode/modify/FMODAudioEngine.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
-#include <Geode/modify/EndLevelLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
-#include <Geode/modify/CCScheduler.hpp>
-#include <Geode/modify/CCParticleSystemQuad.hpp>
-#include <Geode/modify/CCCircleWave.hpp>
-#include <Geode/utils/web.hpp>
-
-#include <sstream>
-#include <filesystem>
-#include <fstream>
 
 #ifdef GEODE_IS_WINDOWS
+#include "../utils/subprocess.hpp"
+#endif
+
+#include <filesystem>
+#include <thread>
+
+#ifndef GEODE_IS_IOS
+
+static bool writePCMWav(const std::filesystem::path& outPath,
+                        std::span<const float> pcm, FMOD::System* system);
+
 class $modify(CCParticleSystemQuad) {
-    
     static CCParticleSystemQuad* create(const char* v1, bool v2) {
         CCParticleSystemQuad* ret = CCParticleSystemQuad::create(v1, v2);
         if (!Global::get().renderer.recording) return ret;
-        
-        if (std::string_view(v1) == "levelComplete01.plist" && Mod::get()->getSavedValue<bool>("render_hide_levelcomplete"))
-        ret->setVisible(false);
-        
+        if (std::string_view(v1) == "levelComplete01.plist" &&
+            Mod::get()->getSavedValue<bool>("render_hide_levelcomplete"))
+            ret->setVisible(false);
         return ret;
     }
-    
 };
 
 class $modify(CCCircleWave) {
-    
     static CCCircleWave* create(float v1, float v2, float v3, bool v4, bool v5) {
         CCCircleWave* ret = CCCircleWave::create(v1, v2, v3, v4, v5);
-        
-        if (!Global::get().renderer.recording || !PlayLayer::get()->m_levelEndAnimationStarted) return ret;
-        
+        if (!Global::get().renderer.recording ||
+            !PlayLayer::get()->m_levelEndAnimationStarted) return ret;
         if (Mod::get()->getSavedValue<bool>("render_hide_levelcomplete"))
-        ret->setVisible(false);
-        
+            ret->setVisible(false);
         return ret;
     }
-    
 };
 
-class $modify(PlayLayer) {
-    
+class $modify(RenderPlayLayerHook, PlayLayer) {
     void showCompleteText() {
         PlayLayer::showCompleteText();
         if (!Global::get().renderer.recording) return;
-        
-        if (m_levelEndAnimationStarted && Mod::get()->getSavedValue<bool>("render_hide_levelcomplete")) {
+        if (m_levelEndAnimationStarted &&
+            Mod::get()->getSavedValue<bool>("render_hide_levelcomplete")) {
             for (CCNode* node : CCArrayExt<CCNode*>(getChildren())) {
                 CCSprite* spr = typeinfo_cast<CCSprite*>(node);
                 if (!spr) continue;
@@ -60,76 +58,52 @@ class $modify(PlayLayer) {
             }
         }
     }
-    
 };
 
 class $modify(EndLevelLayer) {
-    
     void customSetup() {
         EndLevelLayer::customSetup();
-        
         if (!PlayLayer::get()) return;
-        if (Global::get().renderer.recording && PlayLayer::get()->m_levelEndAnimationStarted && Mod::get()->getSavedValue<bool>("render_hide_endscreen")) {
-            Loader::get()->queueInMainThread([this] {
-                setVisible(false);
-            });
+        if (Global::get().renderer.recording &&
+            PlayLayer::get()->m_levelEndAnimationStarted &&
+            Mod::get()->getSavedValue<bool>("render_hide_endscreen")) {
+            Loader::get()->queueInMainThread([this] { setVisible(false); });
         }
     }
-    
 };
 
 class $modify(FMODAudioEngine) {
-    
     int playEffect(gd::string path, float speed, float p2, float volume) {
         if (path == "explode_11.ogg" && Global::get().renderer.recording) return 0;
-        
-        if (path != "playSound_01.ogg" || !Global::get().renderer.recordingAudio)
         return FMODAudioEngine::playEffect(path, speed, p2, volume);
-        
-        return 0;
-    } 
+    }
 };
 
 class $modify(GJBaseGameLayer) {
     void update(float dt) {
         GJBaseGameLayer::update(dt);
         auto& g = Global::get();
-        
         PlayLayer* pl = PlayLayer::get();
-        
-        if ((!g.renderer.recording && !g.renderer.recordingAudio) || !pl) return;
-        
-        int frame = Global::getCurrentFrame();
-        
-        if (g.renderer.recording && frame % static_cast<int>(Global::getTPS() / g.renderer.fps) == 0)
-        return g.renderer.handleRecording(pl, frame);
-        
-        if (g.renderer.recordingAudio && !g.renderer.startedAudio) {
-            return g.renderer.startAudio(pl);
-        }
-        
-        if (g.renderer.recordingAudio && frame % static_cast<int>(Global::getTPS() / g.renderer.fps) == 0)
-        return g.renderer.handleAudioRecording(pl, frame);
+        if (!g.renderer.recording || !pl) return;
+        int frame  = Global::getCurrentFrame();
+        int tpsInt = static_cast<int>(Global::getTPS());
+        int fpsInt = static_cast<int>(g.renderer.fps);
+        if (tpsInt <= 0 || fpsInt <= 0) return;
+        if (frame % (tpsInt / fpsInt) == 0)
+            g.renderer.handleRecording(pl, frame);
     }
 };
 
-float leftOver = 0.f;
+static float schedulerLeftOver = 0.f;
 
 class $modify(CCScheduler) {
-    
     void update(float dt) {
         Renderer& r = Global::get().renderer;
         if (!r.recording) return CCScheduler::update(dt);
-        
         r.changeRes(false);
-        
-        using namespace std::literals;
-        
-        float newDt = 1.f / Global::getTPS();
-        
-        auto startTime = asp::time::Instant::now();
-        int mult = static_cast<int>((dt + leftOver) / newDt);
-        
+        float newDt     = 1.f / Global::getTPS();
+        auto  startTime = asp::time::Instant::now();
+        int   mult      = static_cast<int>((dt + schedulerLeftOver) / newDt);
         for (int i = 0; i < mult; ++i) {
             CCScheduler::update(newDt);
             if (startTime.elapsed() > asp::time::Duration::fromMillis(33)) {
@@ -137,495 +111,402 @@ class $modify(CCScheduler) {
                 break;
             }
         }
-        
-        leftOver += (dt - newDt * mult);
-        
+        schedulerLeftOver += (dt - newDt * mult);
         r.changeRes(true);
     }
-    
 };
 
 bool Renderer::shouldUseAPI() {
-    // not using it for now
-    return true;
+    return Loader::get()->isModLoaded("eclipse.ffmpeg-api");
 }
 
 bool Renderer::toggle() {
     auto& g = Global::get();
+
     if (Loader::get()->isModLoaded("syzzi.click_between_frames")) {
         FLAlertLayer::create("Render", "Disable CBF in Geode to render a level.", "OK")->show();
         return false;
     }
-    
-    #ifdef GEODE_IS_WINDOWS
-    
-    auto scene = CCScene::get();
+
     if (GameManager::sharedState()->getGameVariable(GameVar::ClickBetweenSteps)) {
+        auto scene = CCScene::get();
         if (scene && !scene->getChildByID("render-alert"_spr)) {
-            auto alert = FLAlertLayer::create("Render", "Disable <cr>Click Between Steps</c> to render a level.", "OK");
+            auto alert = FLAlertLayer::create(
+                "Render", "Disable <cr>Click Between Steps</c> to render a level.", "OK");
             alert->setID("render-alert"_spr);
             alert->show();
         }
         return false;
     }
-    
-    #endif
-    
-    bool foundApi = Loader::get()->isModLoaded("eclipse.ffmpeg-api");
-    std::filesystem::path ffmpegPath = Mod::get()->getSettingValue<std::filesystem::path>("ffmpeg_path");
-    bool foundExe = std::filesystem::exists(ffmpegPath) && geode::utils::string::pathToString(ffmpegPath.filename()) == "ffmpeg.exe";
-    
-    g.renderer.usingApi = false;
-    
-    if (g.renderer.recording || g.renderer.recordingAudio) {
-        g.renderer.recordingAudio ? g.renderer.stopAudio() : g.renderer.stop(Global::getCurrentFrame());
-    }
-    else {
-        
-        #ifdef GEODE_IS_WINDOWS
-        if (!foundExe) {
-            geode::createQuickPopup(
-                "Error",
-                "<cl>FFmpeg</c> not found, set the path to the .exe in mod settings.\nOpen download link?",
-                "Cancel", "Yes",
-                [](auto, bool btn2) {
+
+    bool foundApi = shouldUseAPI();
+
+#ifdef GEODE_IS_WINDOWS
+    std::filesystem::path ffmpegSettingPath =
+        Mod::get()->getSettingValue<std::filesystem::path>("ffmpeg_path");
+    bool foundExe = std::filesystem::exists(ffmpegSettingPath) &&
+        geode::utils::string::pathToString(ffmpegSettingPath.filename()) == "ffmpeg.exe";
+#endif
+
+    if (g.renderer.recording) {
+        g.renderer.stop(Global::getCurrentFrame());
+    } else {
+#ifdef GEODE_IS_WINDOWS
+        if (!foundApi && !foundExe) {
+            geode::createQuickPopup("Error",
+                "<cl>FFmpeg</c> not found. Install eclipse.ffmpeg-api, or set the path "
+                "to ffmpeg.exe in mod settings.\nOpen download link?",
+                "Cancel", "Yes", [](auto, bool btn2) {
                     if (btn2) {
-                        FLAlertLayer::create("Info", "Unzip the downloaded file and look for <cl>ffmpeg.exe</c> in the 'bin' folder.", "OK")->show();
-                        utils::web::openLinkInBrowser("https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z");
+                        FLAlertLayer::create("Info",
+                            "Unzip the downloaded file and look for <cl>ffmpeg.exe</c> "
+                            "in the 'bin' folder.", "OK")->show();
+                        utils::web::openLinkInBrowser(
+                            "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z");
                     }
-                }
-            );
+                });
             return false;
         }
-        
-        g.renderer.ffmpegPath = geode::utils::string::pathToString(ffmpegPath);
-        #else
-        FLAlertLayer::create("Error", "Rendering is not supported on this platform yet.", "OK")->show();
-        return false;
-        #endif
-        
+        if (!foundApi)
+            g.renderer.ffmpegPath = geode::utils::string::pathToString(ffmpegSettingPath);
+#else
+        if (!foundApi) {
+            FLAlertLayer::create("Error",
+                "The <cl>eclipse.ffmpeg-api</c> mod is required for rendering on this platform.",
+                "OK")->show();
+            return false;
+        }
+#endif
+
         if (!PlayLayer::get()) {
             FLAlertLayer::create("Warning", "<cl>Open a level</c> to start rendering it.", "OK")->show();
             return false;
         }
-        
-        #ifdef GEODE_IS_IOS
-        std::filesystem::path path = Mod::get()->getSaveDir() / "renders";
-        #else
-        std::filesystem::path path = Mod::get()->getSettingValue<std::filesystem::path>("render_folder");
-        #endif
-        
-        if (std::filesystem::exists(path))
-        g.renderer.start();
-        else {
-            if (utils::file::createDirectoryAll(path).isOk())
-            g.renderer.start();
-            else {
-                FLAlertLayer::create("Error", "There was an error getting the renders folder. ID: 11", "OK")->show();
+
+#ifdef GEODE_IS_IOS
+        std::filesystem::path renderFolder = Mod::get()->getSaveDir() / "renders";
+#else
+        std::filesystem::path renderFolder =
+            Mod::get()->getSettingValue<std::filesystem::path>("render_folder");
+#endif
+
+        if (!std::filesystem::exists(renderFolder)) {
+            if (!utils::file::createDirectoryAll(renderFolder).isOk()) {
+                FLAlertLayer::create("Error",
+                    "There was an error getting the renders folder. ID: 11", "OK")->show();
                 return false;
             }
         }
+
+        g.renderer.usingApi = foundApi;
+        g.renderer.start();
     }
-    
+
     Interface::updateLabels();
-    
     return true;
 }
 
 void Renderer::start() {
-    PlayLayer* pl = PlayLayer::get();
-    GameManager* gm = GameManager::sharedState();
-    Mod* mod = Mod::get();
+    PlayLayer* pl  = PlayLayer::get();
+    Mod*       mod = Mod::get();
     fmod = FMODAudioEngine::sharedEngine();
-    
-    fps = geode::utils::numFromString<int>(mod->getSavedValue<std::string>("render_fps")).unwrap();
-    codec = mod->getSavedValue<std::string>("render_codec");
-    bitrate = mod->getSavedValue<std::string>("render_bitrate") + "M";
-    extraArgs = mod->getSavedValue<std::string>("render_args");
-    videoArgs = mod->getSavedValue<std::string>("render_video_args");
+
+    fps          = geode::utils::numFromString<int>(
+                       mod->getSavedValue<std::string>("render_fps")).unwrapOr(60);
+    codec        = mod->getSavedValue<std::string>("render_codec");
+    bitrate      = mod->getSavedValue<std::string>("render_bitrate") + "M";
+    extraArgs    = mod->getSavedValue<std::string>("render_args");
+    videoArgs    = mod->getSavedValue<std::string>("render_video_args");
     extraAudioArgs = mod->getSavedValue<std::string>("render_audio_args");
-    SFXVolume = mod->getSavedValue<double>("render_sfx_volume");
-    musicVolume = mod->getSavedValue<double>("render_music_volume");
-    stopAfter = geode::utils::numFromString<float>(mod->getSavedValue<std::string>("render_seconds_after")).unwrapOr(0.f);
-    audioMode = AudioMode::Off;
+    SFXVolume    = mod->getSavedValue<double>("render_sfx_volume");
+    musicVolume  = mod->getSavedValue<double>("render_music_volume");
+    stopAfter    = geode::utils::numFromString<float>(
+                       mod->getSavedValue<std::string>("render_seconds_after")).unwrapOr(0.f);
+    audioMode    = AudioMode::Record;
+
     std::string extension = mod->getSavedValue<std::string>("render_file_extension");
-    
-    if (mod->getSavedValue<bool>("render_only_song")) audioMode = AudioMode::Song;
-    if (mod->getSavedValue<bool>("render_record_audio")) audioMode = AudioMode::Record;
-    
-    auto now = asp::time::SystemTime::now();
-    auto timestamp = now.timeSinceEpoch().millis();
-    
-    std::string filename = fmt::format("render_{}_{}{}", std::string_view(pl->m_level->m_levelName), geode::utils::numToString(timestamp), extension);
-    #ifdef GEODE_IS_IOS
-    std::string path = geode::utils::string::pathToString(Mod::get()->getSaveDir() / "renders" / filename);
-    #else
-    std::string path = geode::utils::string::pathToString(Mod::get()->getSettingValue<std::filesystem::path>("render_folder") / filename);
-    #endif
-    
-    width = geode::utils::numFromString<int>(mod->getSavedValue<std::string>("render_width2")).unwrap();
-    height = geode::utils::numFromString<int>(mod->getSavedValue<std::string>("render_height")).unwrap();
-    
-    if (width % 2 != 0)
-    width++;
-    if (height % 2 != 0)
-    height++;
-    
-    renderer.width = width;
-    renderer.height = height;
-    ogRes = cocos2d::CCEGLView::get()->getDesignResolutionSize();
+    auto timestamp = asp::time::SystemTime::now().timeSinceEpoch().millis();
+    std::string filename = fmt::format("render_{}_{}{}",
+        std::string_view(pl->m_level->m_levelName),
+        geode::utils::numToString(timestamp), extension);
+
+#ifdef GEODE_IS_IOS
+    path = geode::utils::string::pathToString(mod->getSaveDir() / "renders" / filename);
+#else
+    path = geode::utils::string::pathToString(
+        mod->getSettingValue<std::filesystem::path>("render_folder") / filename);
+#endif
+
+    width  = geode::utils::numFromString<int>(
+                 mod->getSavedValue<std::string>("render_width2")).unwrapOr(1920);
+    height = geode::utils::numFromString<int>(
+                 mod->getSavedValue<std::string>("render_height")).unwrapOr(1080);
+    if (width  % 2 != 0) width++;
+    if (height % 2 != 0) height++;
+
+    m_renderTexture = MyRenderTexture();
+    m_renderTexture.width  = width;
+    m_renderTexture.height = height;
+    ogRes    = cocos2d::CCEGLView::get()->getDesignResolutionSize();
     ogScaleX = cocos2d::CCEGLView::get()->m_fScaleX;
     ogScaleY = cocos2d::CCEGLView::get()->m_fScaleY;
-    
-    dontRender = true;
-    recording = true;
-    frameHasData = false;
+
+    recording     = true;
     levelFinished = false;
-    startedAudio = false;
-    timeAfter = 0.f;
-    finishFrame = 0;
-    pauseAttempts = 0;
-    lastFrame_t = extra_t = 0;
-    
-    if (!pl->m_levelEndAnimationStarted && pl->m_isPaused)
-    Global::get().restart = true;
-    
-    if (Global::get().state != state::playing && !Global::get().macro.inputs.empty())
-    Macro::togglePlaying();
-    
-    std::string songFile = pl->m_level->getAudioFileName();
-    if (pl->m_level->m_songID == 0)
-    songFile = cocos2d::CCFileUtils::sharedFileUtils()->fullPathForFilename(songFile.c_str(), false);
-    
-    float songOffset = pl->m_levelSettings->m_songOffset + (fmod->m_musicOffset / 1000.f) + (levelStartFrame / Global::getTPS());
-    bool fadeIn = pl->m_levelSettings->m_fadeIn;
-    bool fadeOut = pl->m_levelSettings->m_fadeOut;
-    int bitrateApi = geode::utils::numFromString<int64_t>(mod->getSavedValue<std::string>("render_bitrate")).unwrapOr(30) * 1000000;
-    
-    currentFrame.resize(width * height * 3, 0);
+    timeAfter     = 0.f;
+    lastFrame_t   = extra_t = 0.0;
+    dontRender    = true;
+
     renderedFrames.clear();
-    renderer.begin();
+    m_currentFrame.resize(width * height * 4, 0);
+
+    m_renderTexture.begin();
     changeRes(false);
-    
-    ffmpeg::RenderSettings settings;
-    settings.m_pixelFormat = ffmpeg::PixelFormat::RGB24;
-    settings.m_codec = codec;
-    settings.m_bitrate = bitrateApi;
-    settings.m_width = width;
-    settings.m_height = height;
-    settings.m_fps = fps;
-    settings.m_outputFile = path;
-    settings.m_colorspaceFilters = videoArgs;
-    
-    if (!Mod::get()->setSavedValue("first_render_", true)) {
-        FLAlertLayer::create(
-            "Warning",
+
+    DSPRecorder::get()->start();
+
+    if (!pl->m_levelEndAnimationStarted && pl->m_isPaused)
+        Global::get().restart = true;
+
+    if (Global::get().state != state::playing && !Global::get().macro.inputs.empty())
+        Macro::togglePlaying();
+
+    if (!mod->setSavedValue("first_render_", true)) {
+        FLAlertLayer::create("Warning",
             "If you have a macro for the level, <cl>let it run</c> to allow the level to render.",
-            "OK"
-        )->show();
+            "OK")->show();
     }
-    
-    async::runtime().spawnBlocking<void>([this, path, songFile, songOffset, fadeIn, fadeOut, extension, bitrateApi, settings]() {
-        if (!codec.empty()) codec = "-c:v " + codec + " ";
-        if (!bitrate.empty()) bitrate = "-b:v " + bitrate + " ";
-        if (extraArgs.empty()) extraArgs = "-pix_fmt yuv420p";
-        if (videoArgs.empty()) videoArgs = "colorspace=all=bt709:iall=bt470bg:fast=1";
-        
-        float fadeInTime = geode::utils::numFromString<float>(Mod::get()->getSavedValue<std::string>("render_fade_in_time")).unwrapOr(0.f);
-        bool fadeInVideo = Mod::get()->getSavedValue<bool>("render_fade_in") && fadeInTime != 0.f;
-        float fadeOutTime = geode::utils::numFromString<float>(Mod::get()->getSavedValue<std::string>("render_fade_out_time")).unwrapOr(0.f);
-        bool fadeOutVideo = Mod::get()->getSavedValue<bool>("render_fade_out") && fadeOutTime != 0.f;
-        
-        std::string fadeArgs;
-        std::string command;
-        #ifdef GEODE_IS_WINDOWS
-        subprocess::Popen process;
-        #endif
-        
-        if (fadeInVideo)
-        fadeArgs = fmt::format(",fade=t=in:st=0:d={}", fadeInTime);
-        
-        if (usingApi) {
-            auto res = ffmpeg.init(settings);
-            if (res.isErr()) {
-                Loader::get()->queueInMainThread([] {
-                    // std::string err = res.unwrapErr();
-                    FLAlertLayer::create("Error", "FFmpeg API failed to initialize: ", "OK")->show();
-                });
-                
-                audioMode = AudioMode::Off;
-                return stop();
-            }
-            
-        } else {
-            #ifdef GEODE_IS_WINDOWS
-            command = fmt::format(
-                "\"{}\" -y -f rawvideo -pix_fmt rgb24 -s {}x{} -r {} -i - {}{}{} -vf \"vflip,{}{}\" -an \"{}\" ",
-                ffmpegPath,
-                geode::utils::numToString(width),
-                geode::utils::numToString(height),
-                geode::utils::numToString(fps),
-                codec,
-                bitrate,
-                extraArgs,
-                videoArgs,
-                fadeArgs,
-                path
-            );
-            
-            log::info("Executing: {}", command);
-            
-            process = subprocess::Popen(command);
-            #endif
-        }
-        
-        int frameCount = 0;
-        while (recording || pause || recordingAudio || frameHasData) {
-            lock.lock();
-            if (frameHasData) {
-                const std::vector<uint8_t> frame = currentFrame;
-                frameHasData = false;
-                lock.unlock();
-                if (usingApi) {
-                    auto res = ffmpeg.writeFrame(frame);
-                    if (res.isErr()) {
-                        Loader::get()->queueInMainThread([] {
-                            FLAlertLayer::create("Error", "FFmpeg API failed: ", "OK")->show();
-                        });
-                        
-                        audioMode = AudioMode::Off;
-                        stop();
-                        break;
-                    }
-                }
-                #ifdef GEODE_IS_WINDOWS
-                else {
-                    process.m_stdin.write(frame.data(), frame.size());
-                    frameCount++;
-                    
-                }
-                #endif
-            }
-            else lock.unlock();
-        }
-        
-        
-        if (usingApi) {
-            ffmpeg.stop();
-        }
-        else {
-            #ifdef GEODE_IS_WINDOWS
-            
-            if (process.close()) {
-                Loader::get()->queueInMainThread([] {
-                    FLAlertLayer::create("Error", "There was an error saving the render. Wrong render Args.", "OK")->show();
-                });
-                return;
-            }
-            
-            #endif
-        }
-        
-        Loader::get()->queueInMainThread([] {
-            Notification::create("Saving Render...", NotificationIcon::Loading)->show();
-        });
-        asp::sleep(asp::Duration::fromMillis(100));
-        
-        if ((SFXVolume == 0.f && musicVolume == 0.f) || audioMode == AudioMode::Off || (audioMode == AudioMode::Song && !std::filesystem::exists(songFile)) || (audioMode == AudioMode::Record && !std::filesystem::exists("fmodoutput.wav"))) {
-            if (audioMode != AudioMode::Off) {
-                Loader::get()->queueInMainThread([] {
-                    FLAlertLayer::create("Error", "Song File not found.", "OK")->show();
-                });
-                
-                asp::sleep(asp::Duration::fromMillis(100));
-            }
-            
+
+    std::thread(&Renderer::recordThread, this).detach();
+}
+
+void Renderer::recordThread() {
+    geode::utils::thread::setName("xdBot Recorder Thread");
+
+    Mod* mod = Mod::get();
+
+    int bitrateApi = geode::utils::numFromString<int>(
+        mod->getSavedValue<std::string>("render_bitrate")).unwrapOr(12) * 1000000;
+
+    ffmpeg::RenderSettings settings;
+    settings.m_pixelFormat       = ffmpeg::PixelFormat::RGBA;
+    settings.m_codec             = codec;
+    settings.m_bitrate           = bitrateApi;
+    settings.m_width             = width;
+    settings.m_height            = height;
+    settings.m_fps               = static_cast<uint16_t>(fps);
+    settings.m_outputFile        = path;
+    settings.m_colorspaceFilters = videoArgs;
+    settings.m_doVerticalFlip    = true;
+
+#ifdef GEODE_IS_WINDOWS
+    subprocess::Popen process;
+#endif
+
+    if (usingApi) {
+        auto res = ffmpeg.init(settings);
+        if (res.isErr()) {
+            recording = false;
+            m_frameReady.set(true);
             Loader::get()->queueInMainThread([] {
-                Notification::create("Render Saved Without Audio", NotificationIcon::Success)->show();
-                if (!Mod::get()->getSavedValue<bool>("render_hide_endscreen")) return;
-                if (PlayLayer* pl = PlayLayer::get())
-                if (EndLevelLayer* layer = pl->getChildByType<EndLevelLayer>(0))
-                layer->setVisible(true);
+                FLAlertLayer::create("Error", "FFmpeg API failed to initialize.", "OK")->show();
             });
-            
             return;
         }
-        
-        std::filesystem::path tempPath = std::filesystem::path(path).parent_path() / ("temp_" + geode::utils::string::pathToString(std::filesystem::path(path).filename()));
-        std::filesystem::path tempPathAudio = (Mod::get()->getSaveDir() / "temp_audio_file.wav");
-        
+    }
+#ifdef GEODE_IS_WINDOWS
+    else {
+        std::string c  = codec.empty()   ? "" : ("-c:v " + codec + " ");
+        std::string b  = bitrate.empty() ? "" : ("-b:v " + bitrate + " ");
+        std::string ea = extraArgs.empty() ? "-pix_fmt yuv420p" : extraArgs;
+        std::string va = videoArgs.empty()
+            ? "colorspace=all=bt709:iall=bt470bg:fast=1" : videoArgs;
+
+        float fadeInTime = geode::utils::numFromString<float>(
+            mod->getSavedValue<std::string>("render_fade_in_time")).unwrapOr(0.f);
+        bool fadeInVideo = mod->getSavedValue<bool>("render_fade_in") && fadeInTime != 0.f;
+        std::string fadeArgs;
+        if (fadeInVideo)
+            fadeArgs = fmt::format(",fade=t=in:st=0:d={}", fadeInTime);
+
+        std::string command = fmt::format(
+            "\"{}\" -y -f rawvideo -pix_fmt rgb24 -s {}x{} -r {} -i - {}{}{} "
+            "-vf \"vflip,{}{}\" -an \"{}\" ",
+            ffmpegPath,
+            geode::utils::numToString(width), geode::utils::numToString(height),
+            geode::utils::numToString(fps),
+            c, b, ea, va, fadeArgs, path);
+
+        log::info("Renderer: {}", command);
+        process = subprocess::Popen(command);
+    }
+#endif
+
+    m_frameReady.set(false);
+    m_frameReady.wait_for(true);
+
+    while (recording) {
         if (usingApi) {
-            std::string file = audioMode == AudioMode::Song ? songFile : "fmodoutput.wav";
-            auto res = ffmpeg::events::AudioMixer::mixVideoAudio(path, file, tempPath);
-            log::debug("XD");
+            auto res = ffmpeg.writeFrame(m_currentFrame);
             if (res.isErr()) {
                 Loader::get()->queueInMainThread([] {
-                    FLAlertLayer::create("Error", "FFmpeg failed to add audio: ", "OK")->show();
+                    FLAlertLayer::create("Error", "FFmpeg API failed to write frame.", "OK")->show();
                 });
-                return;
+                stop();
+                break;
             }
         }
+#ifdef GEODE_IS_WINDOWS
         else {
-            #ifdef GEODE_IS_WINDOWS
-            
-            double totalTime = lastFrame_t;
-            if (fadeOutTime > totalTime) fadeOutTime = totalTime / 2;
-            float fadeOutStart = totalTime - fadeOutTime;
-            
-            if (fadeOutVideo) {
-                command = fmt::format("\"{}\" -i \"{}\" -vf \"fade=t=out:st={}:d={}\" {}{}-c:a copy \"{}\"", ffmpegPath, path, fadeOutStart, geode::utils::numToString(fadeOutTime), codec, bitrate, path + "_temp" + extension);
-                
-                log::info("Executing (Fade Out): {}", command);
-                process = subprocess::Popen(command);
-                if (!process.close()) {
-                    std::error_code ec;
-                    std::filesystem::remove(path, ec);
-                    if (ec) log::warn("Failed to remove old render file.");
-                    else {
-                        ec.clear();
-                        std::filesystem::rename(path + "_temp" + extension, path, ec);
-                        if (ec) log::warn("Failed to rename temp render file.");
-                    }
-                } else log::debug("Fade Out Error xD");
-            }
-            
-            if (audioMode == AudioMode::Record) {
-                command = fmt::format("\"{}\" -i \"fmodoutput.wav\" -acodec pcm_s16le -ar 44100 -ac 2 \"{}\"",
-                    ffmpegPath, tempPathAudio
-                );
-                
-                process = subprocess::Popen(command);
-                if (process.close()) {
-                    Loader::get()->queueInMainThread([] {
-                        FLAlertLayer::create("Error", "There was an error adding the song. ID: 140", "OK")->show();
-                    });
-                    return;
-                }
-            }
-            
-            {
-                
-                std::string fadeInString;
-                if ((fadeIn && audioMode == AudioMode::Song) || fadeInVideo) 
-                fadeInString = fmt::format(", afade=t=in:d={}", fadeInVideo ? geode::utils::numToString(fadeInTime) : "2");
-                
-                std::string fadeOutString;
-                if ((fadeOut && audioMode == AudioMode::Song) || fadeOutVideo) 
-                fadeOutString = fmt::format(
-                    ", afade=t=out:d={}:st={}", 
-                    fadeOutVideo ? geode::utils::numToString(fadeOutTime) : "2",
-                    fadeOutVideo ? fadeOutStart : totalTime - timeAfter - 3.5f
-                );
-                
-                std::filesystem::path file = audioMode == AudioMode::Song ? songFile : tempPathAudio;
-                float offset = audioMode == AudioMode::Song ? songOffset : (isPlatformer ? 0.28f : 0.f);
-                
-                if (!extraAudioArgs.empty()) extraAudioArgs += " ";
-                
-                std::string volume = audioMode == AudioMode::Song ? fmt::format(",volume={:.2f}", musicVolume) : "";
-                
-                command = fmt::format(
-                    "\"{}\" -y -ss {} -i \"{}\" -i \"{}\" -t {} -c:v copy {} -filter:a \"[1:a]adelay=0|0{}{}{}\" \"{}\"",
-                    ffmpegPath,
-                    offset,
-                    file,
-                    path,
-                    totalTime,
-                    extraAudioArgs,
-                    fadeInString,
-                    fadeOutString,
-                    volume,
-                    tempPath
-                );
-                
-                log::info("Executing (Audio): {}", command);
-                
-                auto process = subprocess::Popen(command);
-                if (process.close()) {
-                    Loader::get()->queueInMainThread([] {
-                        FLAlertLayer::create("Error", "There was an error adding the song. Wrong Audio Args.", "OK")->show();
-                    });
-                    return;
-                }
-            }
-            
-            #endif 
+            process.m_stdin.write(m_currentFrame.data(), m_currentFrame.size());
         }
-        
-        std::error_code ec;
-        std::filesystem::remove(path, ec);
-        if (ec) log::warn("Failed to remove old render file.");
-        else {
-            ec.clear();
-            std::filesystem::rename(tempPath, path, ec);
-            if (ec) log::warn("Failed to rename temp render file.");
+#endif
+
+        if (!recording) break;
+
+        m_frameReady.set(false);
+        m_frameReady.wait_for(true);
+    }
+
+    log::debug("Renderer: record thread stopped.");
+
+    if (usingApi) {
+        ffmpeg.stop();
+    }
+#ifdef GEODE_IS_WINDOWS
+    else {
+        if (process.close()) {
+            Loader::get()->queueInMainThread([] {
+                FLAlertLayer::create("Error",
+                    "There was an error saving the render. Wrong render Args.", "OK")->show();
+            });
+            return;
         }
-        
-        ec.clear();
-        std::filesystem::remove(tempPathAudio, ec);
-        if (ec) log::warn("Failed to remove temp audio file.");
-        
-        ec.clear();
-        std::filesystem::remove("fmodoutput.wav", ec);
-        if (ec) log::warn("Failed to remove fmod audio file.");
-        
-        Loader::get()->queueInMainThread([] {
-            Notification::create("Render Saved With Audio", NotificationIcon::Success)->show();
+    }
+#endif
+
+    DSPRecorder::get()->stop();
+    auto pcm = DSPRecorder::get()->getData();
+
+    Loader::get()->queueInMainThread([] {
+        Notification::create("Saving Render...", NotificationIcon::Loading)->show();
+    });
+    asp::sleep(asp::Duration::fromMillis(100));
+
+    if (audioMode == AudioMode::Off || pcm.empty() ||
+        (SFXVolume == 0.f && musicVolume == 0.f)) {
+        Loader::get()->queueInMainThread([this] {
+            Notification::create("Render Saved Without Audio", NotificationIcon::Success)->show();
+            showEndScreenIfNeeded();
         });
-        
+        return;
+    }
+
+    std::filesystem::path videoPath = path;
+    std::filesystem::path tempPath  = videoPath.parent_path() /
+        ("temp_" + geode::utils::string::pathToString(videoPath.filename()));
+
+    int sampleRate = 48000, audioChannels = 2;
+    if (fmod && fmod->m_system)
+        fmod->m_system->getSoftwareFormat(&sampleRate, nullptr, &audioChannels);
+    double capturedLastFrame = lastFrame_t;
+    size_t expectedSamples = static_cast<size_t>(capturedLastFrame * sampleRate * audioChannels);
+    std::span<float> pcmSpan = pcm;
+    if (pcmSpan.size() > expectedSamples)
+        pcmSpan = pcmSpan.subspan(0, expectedSamples);
+
+    log::info("Renderer: mixing audio, pcm samples={}, video duration={:.3f}s",
+        pcmSpan.size(), capturedLastFrame);
+
+    geode::Result<> mixRes = geode::Err("not started");
+
+    if (usingApi) {
+        mixRes = ffmpeg::events::AudioMixer::mixVideoRaw(videoPath, pcmSpan, tempPath);
+    }
+#ifdef GEODE_IS_WINDOWS
+    else {
+        std::filesystem::path tempWav = Mod::get()->getSaveDir() / "temp_audio_file.wav";
+        if (!writePCMWav(tempWav, pcmSpan, fmod ? fmod->m_system : nullptr)) {
+            Loader::get()->queueInMainThread([] {
+                FLAlertLayer::create("Error", "Failed to write captured audio to WAV.", "OK")->show();
+            });
+            return;
+        }
+
+        double totalTime = capturedLastFrame;
+        if (!extraAudioArgs.empty()) extraAudioArgs += " ";
+
+        std::string cmd = fmt::format(
+            "\"{}\" -y -i \"{}\" -i \"{}\" -t {} -c:v copy {}"
+            "-filter:a \"[1:a]adelay=0|0\" \"{}\"",
+            ffmpegPath,
+            geode::utils::string::pathToString(tempWav),
+            path, totalTime, extraAudioArgs,
+            geode::utils::string::pathToString(tempPath));
+
+        log::info("Renderer (recorded audio): {}", cmd);
+        auto proc = subprocess::Popen(cmd);
+        if (proc.close()) mixRes = geode::Err(std::string("Wrong Audio Args"));
+        else              mixRes = geode::Ok();
+
+        std::error_code ec;
+        std::filesystem::remove(tempWav, ec);
+    }
+#endif
+
+    if (mixRes.isErr()) {
+        log::error("Renderer: mix failed: {}", mixRes.unwrapErr());
+        Loader::get()->queueInMainThread([err = mixRes.unwrapErr()] {
+            FLAlertLayer::create("Error",
+                fmt::format("Failed to mix audio: {}", err).c_str(), "OK")->show();
+        });
+        Loader::get()->queueInMainThread([this] { showEndScreenIfNeeded(); });
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::remove(videoPath, ec);
+    if (ec) {
+        log::warn("Renderer: failed to remove original: {}", ec.message());
+    } else {
+        ec.clear();
+        std::filesystem::rename(tempPath, videoPath, ec);
+        if (ec) log::warn("Renderer: failed to rename output: {}", ec.message());
+    }
+
+    Loader::get()->queueInMainThread([this] {
+        Notification::create("Render Saved With Audio", NotificationIcon::Success)->show();
+        showEndScreenIfNeeded();
     });
 }
 
-void Renderer::stop(int frame) {
-    renderedFrames.clear();
-    finishFrame = Global::getCurrentFrame();
-    pause = true;
+void Renderer::stop(int /*frame*/) {
+    if (!recording) return;
     recording = false;
-    timeAfter = 0.f;
-    
-    if (usingApi) audioMode = AudioMode::Off;
-    
-    if (PlayLayer* pl = PlayLayer::get()) {
-        
-        if (pl->m_isPaused && audioMode == AudioMode::Record) {
-            if (PauseLayer* layer = Global::getPauseLayer()) {
-                CCScene* scene = CCDirector::sharedDirector()->getRunningScene();
-                if (RecordLayer* xdbot = scene->getChildByType<RecordLayer>(0))
-                xdbot->onClose(nullptr);
-                
-                layer->onResume(nullptr);
-            }
-        }
-        else if (pl->m_levelEndAnimationStarted) {
-            finishFrame = 0;
-            levelFinished = true;
-        }
-        
-    } else
-    audioMode = AudioMode::Off;
-    
-    if (audioMode == AudioMode::Record) {
-        recordingAudio = true;
-        dontRecordAudio = true;
-        Notification::create("Recording Audio...", NotificationIcon::Loading)->show();
-    }
-    
-    pause = false;
+
+    m_frameReady.set(true);
+
+    m_renderTexture.end();
     changeRes(true);
 }
 
 void Renderer::changeRes(bool og) {
     cocos2d::CCEGLView* view = cocos2d::CCEGLView::get();
-    cocos2d::CCSize res = {0, 0};
-    float scaleX = 1.f;
-    float scaleY = 1.f;
-    
-    res = og ? ogRes : CCSize(320.f * (width / static_cast<float>(height)), 320.f);
-    scaleX = og ? ogScaleX : (width / res.width);
-    scaleY = og ? ogScaleY : (height / res.height);
-    
+    cocos2d::CCSize res;
+    float scaleX, scaleY;
+
+    if (og) {
+        res    = ogRes;
+        scaleX = ogScaleX;
+        scaleY = ogScaleY;
+    } else {
+        res    = CCSize(320.f * (width / static_cast<float>(height)), 320.f);
+        scaleX = width  / res.width;
+        scaleY = height / res.height;
+    }
+
     if (res == CCSize(0, 0) && !og) return changeRes(true);
-    
+
     CCDirector::sharedDirector()->m_obWinSizeInPoints = res;
     view->setDesignResolutionSize(res.width, res.height, ResolutionPolicy::kResolutionExactFit);
     view->m_fScaleX = scaleX;
@@ -633,234 +514,135 @@ void Renderer::changeRes(bool og) {
 }
 
 void MyRenderTexture::begin() {
-    if (Global::get().renderer.usingApi) {
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
-        
-        texture = new CCTexture2D();
-        {
-            std::unique_ptr<char, void(*)(void*)> data(static_cast<char*>(malloc(width * height * 3)), free);
-            memset(data.get(), 0, width * height * 3);
-            texture->initWithData(data.get(), kCCTexture2DPixelFormat_RGB888, width, height, CCSize(static_cast<float>(width), static_cast<float>(height)));
-        }
-        
-        glGetIntegerv(GL_RENDERBUFFER_BINDING, &old_rbo);
-        
-        glGenFramebuffers(1, &fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, texture->getName(), 0);
-        
-        texture->setAliasTexParameters();
-        
-        texture->autorelease();
-        
-        glBindRenderbuffer(GL_RENDERBUFFER, old_rbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
-        #ifdef GEODE_IS_WINDOWS
-    } else {
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &old_fbo);
-        
-        texture = new CCTexture2D();
-        {
-            auto data = malloc(width * height * 3);
-            memset(data, 0, width * height * 3);
-            texture->initWithData(data, kCCTexture2DPixelFormat_RGB888, width, height, CCSize(static_cast<float>(width), static_cast<float>(height)));
-            free(data);
-        }
-        
-        glGetIntegerv(GL_RENDERBUFFER_BINDING_EXT, &old_rbo);
-        
-        glGenFramebuffersEXT(1, &fbo);
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
-        
-        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, texture->getName(), 0);
-        
-        texture->setAliasTexParameters();
-        
-        texture->autorelease();
-        
-        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, old_rbo);
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, old_fbo);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
+
+    auto* tex = new cocos2d::CCTexture2D();
+    {
+        std::unique_ptr<char, void(*)(void*)> data(
+            static_cast<char*>(malloc(width * height * 4)), free);
+        memset(data.get(), 0, width * height * 4);
+        tex->initWithData(data.get(), cocos2d::kCCTexture2DPixelFormat_RGBA8888,
+            width, height,
+            cocos2d::CCSize(static_cast<float>(width), static_cast<float>(height)));
     }
-    #else
-}
-#endif
+    texture = tex;
+
+    glGetIntegerv(GL_RENDERBUFFER_BINDING, &old_rbo);
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, texture->getName(), 0);
+    texture->setAliasTexParameters();
+    texture->autorelease();
+    glBindRenderbuffer(GL_RENDERBUFFER, old_rbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
 }
 
-void MyRenderTexture::capture(std::mutex& lock, std::vector<uint8_t>& data, volatile bool& hasData) {
-    CCDirector* director = CCDirector::sharedDirector();
-    PlayLayer* pl = PlayLayer::get();
-    
-    if (Global::get().renderer.usingApi) {
-        glViewport(0, 0, width, height);
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        
-        pl->visit();
-        
-        glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        lock.lock();
-        hasData = true;
-        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data.data());
-        lock.unlock();
-        
-        glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
-        director->setViewport();
-        #ifdef GEODE_IS_WINDOWS
-    } else {
-        glViewport(0, 0, width, height);
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &old_fbo);
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
-        
-        pl->visit();
-        
-        glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        lock.lock();
-        hasData = true;
-        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data.data());
-        lock.unlock();
-        
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, old_fbo);
-        director->setViewport();
-    }
-    #else
+void MyRenderTexture::end() {
+    if (texture) { /* autorelease handles cleanup */ texture = nullptr; }
+    if (fbo) { glDeleteFramebuffers(1, &fbo); fbo = 0; }
 }
-#endif
+
+void MyRenderTexture::capture(cocos2d::CCNode* node, std::vector<uint8_t>& buffer,
+                               RendererSpinlock& frameReady) {
+    auto* director = cocos2d::CCDirector::sharedDirector();
+
+    glViewport(0, 0, width, height);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    node->visit();
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+
+    frameReady.set(true);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, old_fbo);
+    director->setViewport();
 }
 
 void Renderer::captureFrame() {
-    static int captureCount = 0;
-    while (frameHasData) {}
-    renderer.capture(lock, currentFrame, frameHasData);
-    captureCount++;
+    m_frameReady.wait_for(false);
+
+    if (!recording) return;
+
+    m_renderTexture.capture(PlayLayer::get(), m_currentFrame, m_frameReady);
 }
-int wa = 0;
+
 void Renderer::handleRecording(PlayLayer* pl, int frame) {
-    if (!pl) stop(frame);
+    if (!pl) { stop(frame); return; }
     isPlatformer = pl->m_isPlatformer;
     if (dontRender || pl->m_player1->m_isDead) return;
-    
-    auto& g = Global::get();
-    if (renderedFrames.contains(frame) && frame > 10)
-    return;
-    
+
+    if (renderedFrames.contains(frame) && frame > 10) return;
     renderedFrames.insert(frame);
-    
+
     if (!pl->m_hasCompletedLevel || timeAfter < stopAfter) {
-        
         float dt = 1.f / static_cast<double>(fps);
         if (pl->m_hasCompletedLevel) {
-            timeAfter += dt;
+            timeAfter    += dt;
             levelFinished = true;
         }
-        
+
         float time = pl->m_gameState.m_levelTime + extra_t - lastFrame_t;
         if (time >= dt) {
-            extra_t = time - dt;
+            extra_t     = time - dt;
             lastFrame_t = pl->m_gameState.m_levelTime;
-            
-            int correctMusicTime = static_cast<int>((frame / static_cast<float>(Global::getTPS()) + pl->m_levelSettings->m_songOffset) * 1000);
-            correctMusicTime += fmod->m_musicOffset;
-            
-            if (fmod->getMusicTimeMS(0) - correctMusicTime >= 110)
-            fmod->setMusicTimeMS(correctMusicTime, true, 0);
-            
+
             captureFrame();
+
+            DSPRecorder::get()->tryUnpause(static_cast<float>(lastFrame_t));
+
+            fmod->m_globalChannel->setVolume(SFXVolume);
+            fmod->m_backgroundMusicChannel->setVolume(musicVolume);
         }
-    }
-    else stop(frame);
-}
-
-bool Renderer::tryPause() {
-    if (!recordingAudio) return true;
-    
-    pauseAttempts++;
-    
-    if (pauseAttempts > 5) {
-        pauseAttempts = 0;
-        stopAudio();
-        return true;
-    }
-    
-    return false;
-}
-
-void Renderer::startAudio(PlayLayer* pl) {
-    Ref<EndLevelLayer> endLevelLayer = pl->getChildByType<EndLevelLayer>(0);
-    if (dontRecordAudio) return;
-    
-    if (pl->m_levelEndAnimationStarted && endLevelLayer != nullptr) {
-        Loader::get()->queueInMainThread([endLevelLayer] {
-            auto retryBtn = endLevelLayer->getChildByIDRecursive("retry-button");
-            if (!retryBtn) {
-                endLevelLayer->onReplay(nullptr);
-                // log::info("Passed nullptr to onReplay because retry-button doesn't exist");
-            }
-            else {
-                endLevelLayer->onReplay(retryBtn);
-                // log::info("Passed retry-button to onReplay");
-            }
-        });
-    }
-    else if (!pl->m_levelEndAnimationStarted) {
-        
-        if (!pl->m_isPaused)
-        pl->pauseGame(false);
-        
-        if (Global::get().state != state::playing)
-        Macro::togglePlaying();
-        
-        Global::get().restart = true;
-        
-        if (PauseLayer* layer = Global::getPauseLayer())
-        layer->onResume(nullptr);
-        
-        auto fmod = FMODAudioEngine::sharedEngine();
-        fmod->m_globalChannel->getVolume(&ogSFXVol);
-        fmod->m_backgroundMusicChannel->getVolume(&ogMusicVol);
-        
-        FMODAudioEngine::sharedEngine()->m_system->setOutput(FMOD_OUTPUTTYPE_WAVWRITER);
-        startedAudio = true;
-        pauseAttempts = 0;
-        if (CCNode* lbl = pl->getChildByID("recording-audio-label"_spr))
-        lbl->setVisible(true);
+    } else {
+        stop(frame);
     }
 }
 
-void Renderer::stopAudio() {
-    FMODAudioEngine::sharedEngine()->m_system->setOutput(FMOD_OUTPUTTYPE_AUTODETECT);
-    auto fmod = FMODAudioEngine::sharedEngine();
-    fmod->m_globalChannel->setVolume(ogSFXVol);
-    fmod->m_backgroundMusicChannel->setVolume(ogMusicVol);
-    
-    recordingAudio = false;
+static bool writePCMWav(const std::filesystem::path& outPath,
+                        std::span<const float> pcm, FMOD::System* system) {
+    int sampleRate = 48000, channels = 2;
+    if (system) system->getSoftwareFormat(&sampleRate, nullptr, &channels);
+
+    std::ofstream wav(outPath, std::ios::binary);
+    if (!wav) return false;
+
+    uint32_t dataSize      = static_cast<uint32_t>(pcm.size() * sizeof(float));
+    uint32_t byteRate      = sampleRate * channels * sizeof(float);
+    uint16_t blockAlign    = static_cast<uint16_t>(channels * sizeof(float));
+    uint16_t bitsPerSample = 32;
+    uint16_t audioFmt      = 3;
+    uint16_t ch16          = static_cast<uint16_t>(channels);
+    uint32_t sr32          = static_cast<uint32_t>(sampleRate);
+    uint32_t riffSize      = 36 + dataSize;
+    uint32_t fmtSize       = 16;
+
+    wav.write("RIFF", 4);
+    wav.write(reinterpret_cast<char*>(&riffSize),      4);
+    wav.write("WAVE", 4);
+    wav.write("fmt ", 4);
+    wav.write(reinterpret_cast<char*>(&fmtSize),       4);
+    wav.write(reinterpret_cast<char*>(&audioFmt),      2);
+    wav.write(reinterpret_cast<char*>(&ch16),          2);
+    wav.write(reinterpret_cast<char*>(&sr32),          4);
+    wav.write(reinterpret_cast<char*>(&byteRate),      4);
+    wav.write(reinterpret_cast<char*>(&blockAlign),    2);
+    wav.write(reinterpret_cast<char*>(&bitsPerSample), 2);
+    wav.write("data", 4);
+    wav.write(reinterpret_cast<char*>(&dataSize),      4);
+    wav.write(reinterpret_cast<const char*>(pcm.data()), dataSize);
+
+    return wav.good();
+}
+
+void Renderer::showEndScreenIfNeeded() {
+    if (!Mod::get()->getSavedValue<bool>("render_hide_endscreen")) return;
     if (PlayLayer* pl = PlayLayer::get())
-    if (CCNode* lbl = pl->getChildByID("recording-audio-label"_spr))
-    lbl->setVisible(false);
+        if (EndLevelLayer* layer = pl->getChildByType<EndLevelLayer>(0))
+            layer->setVisible(true);
 }
 
-void Renderer::handleAudioRecording(PlayLayer* pl, int frame) {
-    auto& g = Global::get();
-    
-    fmod->m_globalChannel->setVolume(SFXVolume);
-    fmod->m_backgroundMusicChannel->setVolume(musicVolume);
-    
-    if (!pl) {
-        g.renderer.stopAudio();
-        return;
-    }
-    
-    if (finishFrame != 0 && frame >= finishFrame) {
-        g.renderer.stopAudio();
-        return;
-    }
-    
-    if (!pl->m_hasCompletedLevel || timeAfter < stopAfter) {
-        float dt = 1.f / static_cast<double>(fps);
-        if (pl->m_hasCompletedLevel)
-        timeAfter += dt;
-    }
-    else
-    g.renderer.stopAudio();
-}
 #endif

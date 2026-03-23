@@ -3,117 +3,183 @@
 #include "render_settings.hpp"
 
 #include <Geode/loader/Event.hpp>
-#include <Geode/Result.hpp>
-#include <functional>
 
 namespace ffmpeg::events {
 namespace impl {
+    constexpr size_t VTABLE_VERSION = 1;
+    using CreateRecorder_t = void*(*)();
+    using DeleteRecorder_t = void(*)(void*);
+    using InitRecorder_t = geode::Result<>(*)(void*, const RenderSettings&);
+    using StopRecorder_t = void(*)(void*);
+    using WriteFrame_t = geode::Result<>(*)(void*, std::span<uint8_t const>);
+    using GetAvailableCodecs_t = std::vector<std::string>(*)();
+    using MixVideoAudio_t = geode::Result<>(*)(const std::filesystem::path&, const std::filesystem::path&, const std::filesystem::path&);
+    using MixVideoRaw_t = geode::Result<>(*)(const std::filesystem::path&, std::span<float>, const std::filesystem::path&);
 
-#define DEFAULT_RESULT_ERROR geode::Err("Event was not handled")
+    struct VTable {
+        CreateRecorder_t createRecorder = nullptr;
+        DeleteRecorder_t deleteRecorder = nullptr;
+        InitRecorder_t initRecorder = nullptr;
+        StopRecorder_t stopRecorder = nullptr;
+        WriteFrame_t writeFrame = nullptr;
+        GetAvailableCodecs_t getAvailableCodecs = nullptr;
+        MixVideoAudio_t mixVideoAudio = nullptr;
+        MixVideoRaw_t mixVideoRaw = nullptr;
+    };
 
-	// Listeners should supply a pointer to an internal recorder implementation
-	// by returning it when CreateRecorderEvent is sent.
-	// Create: returns created pointer via out-parameter
-	class CreateRecorderEvent : public geode::ThreadSafeEvent<CreateRecorderEvent, bool(void*&)> {};
+    struct FetchVTableEvent : geode::Event<FetchVTableEvent, bool(VTable&, size_t)> {
+        using Event::Event;
+    };
 
-	// Listener will be called with the pointer to delete/cleanup.
-	class DeleteRecorderEvent : public geode::ThreadSafeEvent<DeleteRecorderEvent, void(void*)> {};
-
-	// Initialize recorder: listener should return a geode::Result<>
-	// Initialize: listener should write result into out param
-	class InitRecorderEvent : public geode::ThreadSafeEvent<InitRecorderEvent, bool(void*, geode::Result<>&, const RenderSettings&)> {};
-
-	class StopRecorderEvent : public geode::ThreadSafeEvent<StopRecorderEvent, void(void*)> {};
-
-	// Provide a write-frame function. Listener should return a callable which accepts (void* impl, const std::vector<uint8_t>&)
-	using write_frame_fn_t = std::function<geode::Result<>(void*, const std::vector<uint8_t>&)>;
-	// Provide write-frame function via out param
-	class GetWriteFrameFunctionEvent : public geode::ThreadSafeEvent<GetWriteFrameFunctionEvent, bool(write_frame_fn_t&)> {};
-
-	// Provide codecs via out param
-	class CodecRecorderEvent : public geode::ThreadSafeEvent<CodecRecorderEvent, bool(std::vector<std::string>&)> {};
-
-	// Mixing: write result into out param
-	class MixVideoAudioEvent : public geode::ThreadSafeEvent<MixVideoAudioEvent, bool(geode::Result<>&, const std::filesystem::path&, const std::filesystem::path&, const std::filesystem::path&)> {};
-
-	class MixVideoRawEvent : public geode::ThreadSafeEvent<MixVideoRawEvent, bool(geode::Result<>&, const std::filesystem::path&, const std::vector<float>&, const std::filesystem::path&)> {};
-
-#undef DEFAULT_RESULT_ERROR
+    inline VTable& getVTable() {
+        static VTable vtable;
+        static bool initialized = false;
+        if (!initialized) {
+            initialized = FetchVTableEvent().send(vtable, VTABLE_VERSION);
+        }
+        return vtable;
+    }
 }
 
-// Recorder wrapper that communicates with a platform-specific backend via Geode events.
 class Recorder {
 public:
-	Recorder() {
-		// Ask listeners to create a recorder and return implementation pointer via out-param
-		void* ptr = nullptr;
-		if (impl::CreateRecorderEvent().send(ptr)) {
-			m_ptr = static_cast<Dummy*>(ptr);
-		} else {
-			m_ptr = nullptr;
-		}
-	}
+    Recorder() {
+        auto& vtable = impl::getVTable();
+        if (!vtable.createRecorder) {
+            m_ptr = nullptr;
+        } else {
+            m_ptr = vtable.createRecorder();
+        }
+    }
 
-	~Recorder() {
-		if (m_ptr) {
-			impl::DeleteRecorderEvent().send(reinterpret_cast<void*>(m_ptr));
-			m_ptr = nullptr;
-		}
-	}
+    ~Recorder() {
+        if (m_ptr) {
+            auto& vtable = impl::getVTable();
+            if (vtable.deleteRecorder) {
+                vtable.deleteRecorder(m_ptr);
+            }
+        }
+    }
 
-	bool isValid() const { return m_ptr != nullptr; }
+    bool isValid() const { return m_ptr != nullptr; }
 
-	geode::Result<> init(RenderSettings const& settings) {
-		if (!m_ptr) return geode::Err("Recorder not initialized");
-		geode::Result<> res = geode::Err("Event was not handled");
-		if (!impl::InitRecorderEvent().send(reinterpret_cast<void*>(m_ptr), res, settings))
-			return geode::Err("Event was not handled");
-		return res;
-	}
+    /**
+     * @brief Initializes the Recorder with the specified rendering settings.
+     *
+     * This function configures the recorder with the given render settings,
+     * allocates necessary resources, and prepares for video encoding.
+     *
+     * @param settings The rendering settings that define the output characteristics, 
+     *                 including codec, bitrate, resolution, and pixel format.
+     * 
+     * @return true if initialization is successful, false otherwise.
+     */
+    geode::Result<> init(RenderSettings const& settings) {
+        auto& vtable = impl::getVTable();
+        if (!vtable.initRecorder) {
+            return geode::Err("FFmpeg API is not available.");
+        }
+        return vtable.initRecorder(m_ptr, settings);
+    }
+    /**
+     * @brief Stops the recording process and finalizes the output file.
+     *
+     * This function ensures that all buffered frames are written to the output file,
+     * releases allocated resources, and properly closes the output file.
+     */
+    void stop() {
+        auto& vtable = impl::getVTable();
+        if (vtable.stopRecorder) {
+            vtable.stopRecorder(m_ptr);
+        }
+    }
 
-	void stop() {
-		if (!m_ptr) return;
-		impl::StopRecorderEvent().send(reinterpret_cast<void*>(m_ptr));
-	}
+    /**
+     * @brief Writes a single video frame to the output.
+     *
+     * This function takes the frame data as a byte vector and encodes it 
+     * to the output file. The frame data must match the expected format and 
+     * dimensions defined during initialization.
+     *
+     * @param frameData A vector containing the raw frame data to be written.
+     * 
+     * @return true if the frame is successfully written, false if there is an error.
+     * 
+     * @warning Ensure that the frameData size matches the expected dimensions of the frame.
+     */
+    geode::Result<> writeFrame(std::span<uint8_t const> frameData) {
+        auto& vtable = impl::getVTable();
+        if (!vtable.writeFrame) {
+            return geode::Err("FFmpeg API is not available.");
+        }
+        return vtable.writeFrame(m_ptr, frameData);
+    }
 
-	geode::Result<> writeFrame(const std::vector<uint8_t>& frameData) {
-		impl::write_frame_fn_t fn;
-		if (!impl::GetWriteFrameFunctionEvent().send(fn))
-			return geode::Err("Failed to obtain write-frame function");
-		if (!fn) return geode::Err("No write-frame function available");
-		return fn(reinterpret_cast<void*>(m_ptr), frameData);
-	}
-
-	static std::vector<std::string> getAvailableCodecs() {
-		std::vector<std::string> out;
-		if (!impl::CodecRecorderEvent().send(out))
-			return {};
-		return out;
-	}
+    /**
+     * @brief Retrieves a list of available codecs for video encoding.
+     *
+     * This function iterates through all available codecs in FFmpeg and 
+     * returns a sorted vector of codec names.
+     * 
+     * @return A vector representing the names of available codecs.
+     */
+    static std::vector<std::string> getAvailableCodecs() {
+        auto& vtable = impl::getVTable();
+        if (!vtable.getAvailableCodecs) {
+            return {};
+        }
+        return vtable.getAvailableCodecs();
+    }
 
 private:
-	// opaque impl pointer returned by platform-specific listener
-	struct Dummy {};
-	Dummy* m_ptr = nullptr;
+    void* m_ptr = nullptr;
 };
 
 class AudioMixer {
 public:
-	AudioMixer() = delete;
+    AudioMixer() = delete;
 
-	static geode::Result<> mixVideoAudio(const std::filesystem::path& videoFile, const std::filesystem::path& audioFile, const std::filesystem::path& outputMp4File) {
-		geode::Result<> out = geode::Err("Event was not handled");
-		if (!impl::MixVideoAudioEvent().send(out, videoFile, audioFile, outputMp4File))
-			return geode::Err("Event was not handled");
-		return out;
-	}
+    /**
+     * @brief Mixes a video file and an audio file into a single MP4 output.
+     *
+     * This function takes an input video file and an audio file, and merges them into a single MP4 output file. 
+     * The output MP4 file will have both the video and audio streams synchronized.
+     *
+     * @param videoFile The path to the input video file.
+     * @param audioFile The path to the input audio file.
+     * @param outputMp4File The path where the output MP4 file will be saved.
+     * 
+     * @warning The audio file is expected to contain stereo (dual-channel) audio. Using other formats might lead to unexpected results.
+     * @warning The video file is expected to contain a single video stream. Only the first video stream will be copied.
+     */
+    static geode::Result<> mixVideoAudio(std::filesystem::path const& videoFile, std::filesystem::path const& audioFile, std::filesystem::path const& outputMp4File) {
+        auto& vtable = impl::getVTable();
+        if (!vtable.mixVideoAudio) {
+            return geode::Err("FFmpeg API is not available.");
+        }
+        return vtable.mixVideoAudio(videoFile, audioFile, outputMp4File);
+    }
 
-	static geode::Result<> mixVideoRaw(const std::filesystem::path& videoFile, const std::vector<float>& raw, const std::filesystem::path& outputMp4File) {
-		geode::Result<> out = geode::Err("Event was not handled");
-		if (!impl::MixVideoRawEvent().send(out, videoFile, raw, outputMp4File))
-			return geode::Err("Event was not handled");
-		return out;
-	}
+    /**
+     * @brief Mixes a video file and raw audio data into a single MP4 output.
+     *
+     * This function takes an input video file and raw audio data (in the form of a vector of floating-point samples),
+     * and merges them into a single MP4 output file.
+     *
+     * @param videoFile The path to the input video file.
+     * @param raw A vector containing the raw audio data (floating-point samples).
+     * @param outputMp4File The path where the output MP4 file will be saved.
+     *
+     * @warning The raw audio data is expected to be stereo (dual-channel). Using mono or multi-channel audio might lead to issues.
+     * @warning The video file is expected to contain a single video stream. Only the first video stream will be copied.
+     */
+    static geode::Result<> mixVideoRaw(std::filesystem::path const& videoFile, std::span<float> raw, std::filesystem::path const& outputMp4File) {
+        auto& vtable = impl::getVTable();
+        if (!vtable.mixVideoRaw) {
+            return geode::Err("FFmpeg API is not available.");
+        }
+        return vtable.mixVideoRaw(videoFile, raw, outputMp4File);
+    }
 };
 
-} // namespace ffmpeg::events
+}

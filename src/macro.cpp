@@ -202,7 +202,12 @@ Macro Macro::fromLegacy(const LegacyMacro& legacy) {
     macro.coins = legacy.coins;
     macro.ldm = legacy.ldm;
     macro.botInfo.name = legacy.botInfo.name;
-    macro.botInfo.version = geode::utils::numFromString<int>(legacy.botInfo.version).unwrap();
+    std::string versionStr = legacy.botInfo.version;
+    auto firstSpace = versionStr.find_first_of(" \n\r\t");
+    if (firstSpace != std::string::npos) {
+        versionStr = versionStr.substr(0, firstSpace);
+    }
+    macro.botInfo.version = geode::utils::numFromString<int>(versionStr).unwrapOr(0);
     macro.levelInfo.id = legacy.levelInfo.id;
     macro.levelInfo.name = legacy.levelInfo.name;
     macro.frameFixes = legacy.frameFixes;

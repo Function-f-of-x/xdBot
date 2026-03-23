@@ -75,9 +75,6 @@ class $modify(PlayLayer) {
     }
 
     void pauseGame(bool b1) {
-#ifdef GEODE_IS_WINDOWS
-        if (!Global::get().renderer.tryPause()) return;
-#endif
         auto& g = Global::get();
 
         if (!m_player1 || !m_player2) return PlayLayer::pauseGame(b1);
@@ -234,17 +231,12 @@ class $modify(BGLHook, GJBaseGameLayer) {
         Global::updateSeed();
 
         bool rendering = false;
-#ifdef GEODE_IS_WINDOWS
-        rendering = g.renderer.recording || g.renderer.recordingAudio;
-#endif
+        rendering = g.renderer.recording;
 
         if (g.state != state::none || rendering) {
-#ifdef GEODE_IS_WINDOWS
             if (!g.firstAttempt) {
                 g.renderer.dontRender = false;
-                g.renderer.dontRecordAudio = false;
             }
-#endif
             int frame = Global::getCurrentFrame();
             if (frame > 2 && g.firstAttempt && g.macro.xdBotMacro) {
                 g.firstAttempt = false;
@@ -491,9 +483,8 @@ class $modify(PauseLayer) {
         Macro::resetState();
         Loader::get()->queueInMainThread([] {
             auto& g = Global::get();
-#ifdef GEODE_IS_WINDOWS
+#ifndef GEODE_IS_IOS
             if (g.renderer.recording) g.renderer.stop();
-            if (g.renderer.recordingAudio) g.renderer.stopAudio();
 #endif
         });
     }
@@ -503,9 +494,8 @@ class $modify(PauseLayer) {
         Macro::resetState();
         Loader::get()->queueInMainThread([] {
             auto& g = Global::get();
-#ifdef GEODE_IS_WINDOWS
+#ifndef GEODE_IS_IOS
             if (g.renderer.recording) g.renderer.stop();
-            if (g.renderer.recordingAudio) g.renderer.stopAudio();
 #endif
         });
     }

@@ -1,81 +1,97 @@
+#pragma once
+
 #include "../includes.hpp"
 #include "ffmpeg/events.hpp"
+#include "DSPRecorder.hpp"
 
-#ifdef GEODE_IS_WINDOWS
-enum AudioMode {
-	Off = 0,
-	Song = 1,
-	Record = 2
+#ifndef GEODE_IS_IOS
+
+#include <atomic>
+#include <thread>
+
+class RendererSpinlock {
+public:
+    void wait_for(bool state) const {
+        while (m_flag.load(std::memory_order_acquire) != state)
+            std::this_thread::yield();
+    }
+    [[nodiscard]] bool read() const { return m_flag.load(std::memory_order_acquire); }
+    void set(bool state) { m_flag.store(state, std::memory_order_release); }
+private:
+    std::atomic<bool> m_flag { false };
+};
+
+enum class AudioMode {
+    Off    = 0,
+    Record = 1
 };
 
 class MyRenderTexture {
 public:
-	unsigned width, height;
-	int old_fbo, old_rbo;
-	unsigned fbo;
-	geode::prelude::CCTexture2D* texture = nullptr;
-	void begin();
-	void capture(std::mutex& lock, std::vector<uint8_t>& data, volatile bool& lul);
+    unsigned width = 0, height = 0;
+    int old_fbo = 0, old_rbo = 0;
+    unsigned fbo = 0;
+    geode::prelude::CCTexture2D* texture = nullptr;
+    void begin();
+    void end();
+    void capture(cocos2d::CCNode* node, std::vector<uint8_t>& buffer, RendererSpinlock& frameReady);
 };
 
 class Renderer {
 public:
+    Renderer() : width(1920), height(1080), fps(60) {}
 
-	Renderer() : width(1920), height(1080), fps(60) {}
+    bool levelFinished   = false;
+    bool recording       = false;
+    bool isPlatformer    = false;
+    AudioMode audioMode  = AudioMode::Off;
+    float SFXVolume      = 1.f;
+    float musicVolume    = 1.f;
 
-	volatile bool frameHasData;
-	bool levelFinished = false;
-	bool recording = false;
-	bool pause = false;
-	int audioMode = 0;
-	float ogMusicVol;
-	float ogSFXVol;
-	float SFXVolume = 1.f;
-	float musicVolume = 1.f;
+    bool usingApi        = false;
+    bool dontRender      = false;
+    int  levelStartFrame = 0;
 
-	bool usingApi = false;
-	bool dontRender = false;
-	bool dontRecordAudio = false;
-	bool recordingAudio = false;
-	bool startedAudio = false;
-	bool isPlatformer = false;
-	int finishFrame = 0;
-	int levelStartFrame = 0;
+    float    stopAfter   = 3.f;
+    float    timeAfter   = 0.f;
+    unsigned width, height;
+    unsigned fps;
+    double   lastFrame_t = 0.0;
+    double   extra_t     = 0.0;
 
-	float stopAfter = 3.f;
-	float timeAfter = 0.f;
-	unsigned width, height;
-	unsigned fps;
-	double lastFrame_t, extra_t;
-	int pauseAttempts = 0;
+    ffmpeg::events::Recorder ffmpeg;
 
-	MyRenderTexture renderer;
-	ffmpeg::events::Recorder ffmpeg;
-	std::vector<uint8_t> currentFrame;
-	std::mutex lock;
-	std::string codec = "", bitrate = "12M", extraArgs = "", videoArgs = "", extraAudioArgs = "", path = "";
-	std::string ffmpegPath = geode::utils::string::pathToString(geode::dirs::getGameDir() / "ffmpeg.exe");
-	std::unordered_set<int> renderedFrames;
+#ifdef GEODE_IS_WINDOWS
+    std::string ffmpegPath = geode::utils::string::pathToString(
+        geode::dirs::getGameDir() / "ffmpeg.exe");
+#endif
 
-	FMODAudioEngine* fmod = nullptr;
-	cocos2d::CCSize ogRes = {0, 0};
-	float ogScaleX = 1.f;
-	float ogScaleY = 1.f;
+    std::string codec, bitrate, extraArgs, videoArgs, extraAudioArgs, path;
+    std::unordered_set<int> renderedFrames;
 
-	void captureFrame();
-	void changeRes(bool og);
+    FMODAudioEngine* fmod     = nullptr;
+    cocos2d::CCSize  ogRes    = {0, 0};
+    float            ogScaleX = 1.f;
+    float            ogScaleY = 1.f;
 
-	void start();
-	void startAudio(PlayLayer* pl);
+    void captureFrame();
+    void changeRes(bool og);
 
-	void stop(int frame = 0);
-	void stopAudio();
+    void start();
+    void stop(int frame = 0);
+    void handleRecording(PlayLayer* pl, int frame);
 
-	void handleRecording(PlayLayer* pl, int frame);
-	void handleAudioRecording(PlayLayer* pl, int frame);
-    
-	static bool toggle();
-	static bool shouldUseAPI();
-	bool tryPause();
+    static bool toggle();
+    static bool shouldUseAPI();
+    bool tryPause() { return true; }
+
+private:
+    RendererSpinlock     m_frameReady;
+    std::vector<uint8_t> m_currentFrame;
+    MyRenderTexture      m_renderTexture;
+
+    void recordThread();
+    void showEndScreenIfNeeded();
 };
+
 #endif

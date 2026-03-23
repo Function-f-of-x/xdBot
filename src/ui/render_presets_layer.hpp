@@ -1,3 +1,7 @@
+#pragma once
+
+#ifndef GEODE_IS_IOS
+
 #include "../includes.hpp"
 #include "record_layer.hpp"
 
@@ -53,7 +57,6 @@ private:
                 lbl->setString((json["width"].asString().unwrapOrDefault() + " x " + json["height"].asString().unwrapOrDefault()).c_str());
             }
 
-
             spr = ButtonSprite::create("Save");
             spr->setScale(0.6f);
             btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(RenderPresetsLayer::onSave));
@@ -105,11 +108,7 @@ private:
     }
 
     void openRendersFolder(CCObject*) {
-        #ifdef GEODE_IS_IOS
-        std::filesystem::path path = Mod::get()->getSaveDir() / "renders";
-        #else
         std::filesystem::path path = Mod::get()->getSettingValue<std::filesystem::path>("render_folder");
-        #endif
 
         if (std::filesystem::exists(path))
             file::openFolder(path);
@@ -140,7 +139,6 @@ private:
         m->setSavedValue("render_fade_out_time", json["fade_out_time"].asString().unwrapOrDefault());
 
         m->setSavedValue("render_only_song", json["only_song"].asBool().unwrapOrDefault());
-        m->setSavedValue("render_record_audio", json["record_audio"].asBool().unwrapOrDefault());
         m->setSavedValue("render_hide_endscreen", json["hide_endscreen"].asBool().unwrapOrDefault());
         m->setSavedValue("render_hide_levelcomplete", json["hide_levelcomplete"].asBool().unwrapOrDefault());
         m->setSavedValue("render_fade_in", json["fade_in"].asBool().unwrapOrDefault());
@@ -170,7 +168,6 @@ private:
         json["fade_out_time"] = m->getSavedValue<std::string>("render_fade_out_time");
 
         json["only_song"] = m->getSavedValue<bool>("render_only_song");
-        json["record_audio"] = m->getSavedValue<bool>("render_record_audio");
         json["hide_endscreen"] = m->getSavedValue<bool>("render_hide_endscreen");
         json["hide_levelcomplete"] = m->getSavedValue<bool>("render_hide_levelcomplete");
         json["fade_in"] = m->getSavedValue<bool>("render_fade_in");
@@ -183,3 +180,5 @@ private:
         update();
     }
 };
+
+#endif

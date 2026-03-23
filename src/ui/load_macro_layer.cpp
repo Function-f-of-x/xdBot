@@ -166,8 +166,9 @@ void LoadMacroLayer::onImportMacro(CCObject*) {
 		if (!pathOpt) return;
 		
 		std::filesystem::path path = pathOpt.value();
-		std::string ext = path.extension().string();
-		bool isGdrJson = (ext == ".json" && path.stem().extension().string() == ".gdr");
+		std::string ext = geode::utils::string::pathToString(path.extension());
+		std::string stemExt = geode::utils::string::pathToString(path.stem().extension());
+        bool isGdrJson = (ext == ".json") && (stemExt == ".gdr");
 		bool needsConversion = (ext == ".xd");
 		std::string outExt = isGdrJson ? ".gdr.json" : ext;
 		

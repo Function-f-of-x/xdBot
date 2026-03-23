@@ -269,9 +269,6 @@ class $modify(PauseLayer) {
         #ifdef GEODE_IS_WINDOWS
         if (!Renderer::toggle())
         static_cast<CCMenuItemToggler*>(btn)->toggle(true);
-        
-        if (Global::get().renderer.recordingAudio)
-        static_cast<CCMenuItemToggler*>(btn)->toggle(false);
         #else
         toggleRender2(btn);
         #endif
@@ -445,25 +442,7 @@ class $modify(PauseLayer) {
         
         if (id == "macro_hide_speedhack" || id == "macro_hide_stepper" || id == "macro_always_show_buttons")
         Interface::updateButtons();
-        
-        if (id == "render_only_song" && value) {
-            CCScene* scene = CCDirector::sharedDirector()->getRunningScene();
-            if (RenderSettingsLayer* layer = scene->getChildByType<RenderSettingsLayer>(0)) {
-                if (!layer->recordAudioToggle) return;
-                layer->recordAudioToggle->toggle(false);
-                g.mod->setSavedValue("render_record_audio", false);
-            }
-        }
-        
-        if (id == "render_record_audio" && value) {
-            CCScene* scene = CCDirector::sharedDirector()->getRunningScene();
-            if (RenderSettingsLayer* layer = scene->getChildByType<RenderSettingsLayer>(0)) {
-                if (!layer->onlySongToggle) return;
-                layer->onlySongToggle->toggle(false);
-                g.mod->setSavedValue("render_only_song", false);
-            }
-        }
-        
+            
         if (id == "menu_show_button") {
             PlayLayer* pl = PlayLayer::get();
             
@@ -526,7 +505,13 @@ class $modify(PauseLayer) {
     }
     
     void RecordLayer::showCodecPopup(CCObject*) {
+        #ifdef GEODE_IS_ANDROID
+        FLAlertLayer::create("Codec", "GPU: h264_mediacodec\n CPU: libx264", "OK")->show();
+        #endif
+        
+        #ifdef GEODE_IS_WINDOWS
         FLAlertLayer::create("Codec", "<cr>AMD:</c> h264_amf\n<cg>NVIDIA:</c> h264_nvenc\n<cl>INTEL:</c> h264_qsv\nI don't know: libx264", "OK")->show();
+        #endif
     }
     
     void RecordLayer::updateDots() {
@@ -926,7 +911,7 @@ class $modify(PauseLayer) {
                             spriteOff2->setScale(0.74f);
                             
                             renderToggle = CCMenuItemToggler::create(spriteOff2, spriteOn2, this, menu_selector(RecordLayer::toggleRender));
-                            renderToggle->toggle(g.renderer.recording || g.renderer.recordingAudio);
+                            renderToggle->toggle(g.renderer.recording);
                             renderToggle->setPosition(ccp(-65.5, -100));
                             menu->addChild(renderToggle);
                             #else

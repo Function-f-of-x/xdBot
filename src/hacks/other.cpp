@@ -23,7 +23,7 @@ class $modify(CCScheduler) {
             return CCScheduler::update(dt);
         }
         #ifdef GEODE_IS_WINDOWS
-        if (g.renderer.recording || g.renderer.recordingAudio) {
+        if (g.renderer.recording) {
             if (g.currentPitch != 1.f)
                 Global::updatePitch(1.f);
 
@@ -128,11 +128,7 @@ class $modify(PlayLayer) {
         else
             Global::get().safeMode = true;
         
-        if (getActionByTag(16)) {
-            #ifdef GEODE_IS_WINDOWS
-            if (Global::get().renderer.recordingAudio) Global::get().renderer.stopAudio();
-            #endif
-            
+        if (getActionByTag(16)) {            
             if (g.mod->getSavedValue<bool>("respawn_time_enabled")) {
                 stopActionByTag(16);
                 CCSequence* seq = CCSequence::create(CCDelayTime::create(g.mod->getSavedValue<double>("respawn_time")), CCCallFunc::create(this, callfunc_selector(PlayLayer::delayedResetLevel)), nullptr);
