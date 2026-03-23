@@ -23,8 +23,20 @@ void Macro::recordAction(int frame, int button, bool player2, bool hold) {
         }
     }
 
+    if (!hold) {
+        bool hasPress = false;
+        for (int i = (int)g.macro.inputs.size() - 1; i >= 0; i--) {
+            auto& inp = g.macro.inputs[i];
+            if (inp.button == button && inp.player2 == player2 && inp.down) {
+                hasPress = true;
+                break;
+            }
+        }
+        if (!hasPress) return;
+    }
+
     if (Macro::flipControls())
-      player2 = !player2;
+        player2 = !player2;
 
     g.macro.inputs.push_back(input(frame, button, player2, hold));
 }
