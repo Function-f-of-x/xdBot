@@ -109,7 +109,7 @@ class SaveMacroLayer : public geode::Popup {
         menu->addChild(leftArrow);
         
         formatLabel = CCLabelBMFont::create("", "chatFont.fnt");
-        formatLabel->setPosition({ 112, -90.50f });
+        formatLabel->setPosition({ 114, -90.50f });
         formatLabel->setScale(0.5f);
         formatLabel->setOpacity(100);
         menu->addChild(formatLabel);
