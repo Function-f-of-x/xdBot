@@ -385,8 +385,8 @@ void Renderer::recordThread() {
     }
 #endif
 
-    auto pcm = DSPRecorder::get()->getData();
-    
+   auto pcm = DSPRecorder::get()->getData();
+
     Loader::get()->queueInMainThread([] {
         Notification::create("Saving Render...", NotificationIcon::Loading)->show();
     });
@@ -415,8 +415,6 @@ void Renderer::recordThread() {
         pcm.size(), expectedSamples, capturedLastFrame);
 
     std::span<float> pcmSpan = std::span<float>(pcm);
-if (pcmSpan.size() > expectedSamples)
-    pcmSpan = pcmSpan.subspan(0, expectedSamples);
     if (pcmSpan.size() > expectedSamples)
         pcmSpan = pcmSpan.subspan(0, expectedSamples);
 
@@ -613,11 +611,17 @@ static bool writePCMWav(const std::filesystem::path& outPath,
     int sampleRate = 48000, channels = 2;
     if (system) system->getSoftwareFormat(&sampleRate, nullptr, &channels);
 
-    uint32_t dataSize      = static_cast<uint32_t>(pcm.size() * sizeof(float));
-    uint32_t byteRate      = sampleRate * channels * sizeof(float);
-    uint16_t blockAlign    = static_cast<uint16_t>(channels * sizeof(float));
-    uint16_t bitsPerSample = 32;
-    uint16_t audioFmt      = 3;
+    std::vector<int16_t> pcm16(pcm.size());
+    for (size_t i = 0; i < pcm.size(); i++) {
+        float sample = std::clamp(pcm[i], -1.f, 1.f);
+        pcm16[i] = static_cast<int16_t>(sample * 32767.f);
+    }
+
+    uint32_t dataSize      = static_cast<uint32_t>(pcm16.size() * sizeof(int16_t));
+    uint32_t byteRate      = sampleRate * channels * sizeof(int16_t);
+    uint16_t blockAlign    = static_cast<uint16_t>(channels * sizeof(int16_t));
+    uint16_t bitsPerSample = 16;
+    uint16_t audioFmt      = 1;
     uint16_t ch16          = static_cast<uint16_t>(channels);
     uint32_t sr32          = static_cast<uint32_t>(sampleRate);
     uint32_t riffSize      = 36 + dataSize;
@@ -637,7 +641,7 @@ static bool writePCMWav(const std::filesystem::path& outPath,
     data.append(reinterpret_cast<const char*>(&bitsPerSample), 2);
     data.append("data", 4);
     data.append(reinterpret_cast<const char*>(&dataSize),      4);
-    data.append(reinterpret_cast<const char*>(pcm.data()), dataSize);
+    data.append(reinterpret_cast<const char*>(pcm16.data()), dataSize);
 
     auto span = std::span(reinterpret_cast<const unsigned char*>(data.data()), data.size());
     return geode::utils::file::writeBinary(outPath, span).isOk();
