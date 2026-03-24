@@ -320,7 +320,7 @@ class $modify(BGLHook, GJBaseGameLayer) {
         }
 
         if (g.state == state::recording) handleRecording(frame);
-        if (g.state == state::playing) handlePlaying(Globa
+        if (g.state == state::playing) handlePlaying(Global::getCurrentFrame());
 
     void handleRecording(int frame) {
         auto& g = Global::get();
