@@ -231,13 +231,16 @@ class $modify(BGLHook, GJBaseGameLayer) {
         Global::updateSeed();
 
         bool rendering = false;
-        #ifndef GEODE_IS_IOS
+#ifndef GEODE_IS_IOS
         rendering = g.renderer.recording;
+#endif
 
         if (g.state != state::none || rendering) {
+#ifndef GEODE_IS_IOS
             if (!g.firstAttempt) {
                 g.renderer.dontRender = false;
             }
+#endif
             int frame = Global::getCurrentFrame();
             if (frame > 2 && g.firstAttempt && g.macro.xdBotMacro) {
                 g.firstAttempt = false;
@@ -246,12 +249,10 @@ class $modify(BGLHook, GJBaseGameLayer) {
                 else if (!m_levelEndAnimationStarted)
                     return pl->resetLevel();
             }
-            #endif
 
             if (g.previousFrame == frame && frame != 0 && g.macro.xdBotMacro)
                 return GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
         }
-    }
 
         GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
 
