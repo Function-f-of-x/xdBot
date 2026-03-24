@@ -72,7 +72,9 @@ void RenderSettingsLayer::onDefaults(CCObject*) {
 bool RenderSettingsLayer::init() {
     if (!Popup::init(396, 277, Utils::getTexture().c_str())) return false;
     setTitle("Render Settings");
+    #ifndef GEODE_IS_IOS
     bool usingApi = Renderer::shouldUseAPI();
+    #endif
     
     cocos2d::CCPoint offset = (CCDirector::sharedDirector()->getWinSize() - m_mainLayer->getContentSize()) / 2;
     m_mainLayer->setPosition(m_mainLayer->getPosition() - offset);
@@ -320,7 +322,8 @@ bool RenderSettingsLayer::init() {
     btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(RenderSettingsLayer::onDefaults));
     btn->setPosition({211, -106});
     menu->addChild(btn);
-    
+
+    #ifndef GEODE_IS_IOS
     // ── API dimming (no subprocess path — usingApi always true on non-iOS) ─
     if (usingApi) {
         argsInput->m_textLabel->setOpacity(100);
@@ -349,6 +352,7 @@ bool RenderSettingsLayer::init() {
         musicSlider->m_groove->setOpacity(100);
         musicSlider->m_touchLogic->setOpacity(100);
     }
+    #endif
     
     return true;
 }
