@@ -277,7 +277,7 @@ void Renderer::start() {
             "OK")->show();
     }
 
-    std::thread(&Renderer::recordThread, this).detach();
+    async::runtime().spawnBlocking<void>([this]() { recordThread(); });
 }
 
 void Renderer::recordThread() {
