@@ -330,8 +330,8 @@ void Renderer::recordThread() {
             fadeArgs = fmt::format(",fade=t=in:st=0:d={}", fadeInTime);
 
         std::string command = fmt::format(
-            "\"{}\" -y -f rawvideo -pix_fmt rgb24 -s {}x{} -r {} -i - {}{}{} "
-            "-vf \"vflip,{}{}\" -an \"{}\" ",
+        "\"{}\" -y -f rawvideo -pix_fmt rgba -s {}x{} -r {} -i - {}{}{} "
+        "-vf \"vflip,{}{}\" -an \"{}\" ",
             ffmpegPath,
             geode::utils::numToString(width), geode::utils::numToString(height),
             geode::utils::numToString(fps),
@@ -387,7 +387,7 @@ void Renderer::recordThread() {
 
     DSPRecorder::get()->stop();
     auto pcm = DSPRecorder::get()->getData();
-
+    
     Loader::get()->queueInMainThread([] {
         Notification::create("Saving Render...", NotificationIcon::Loading)->show();
     });
@@ -411,7 +411,13 @@ void Renderer::recordThread() {
         fmod->m_system->getSoftwareFormat(&sampleRate, nullptr, &audioChannels);
     double capturedLastFrame = lastFrame_t;
     size_t expectedSamples = static_cast<size_t>(capturedLastFrame * sampleRate * audioChannels);
-    std::span<float> pcmSpan = pcm;
+
+    log::info("Renderer: pcm={} expected={} lastFrame_t={:.3f}s",
+        pcm.size(), expectedSamples, capturedLastFrame);
+
+    std::span<float> pcmSpan = std::span<float>(pcm);
+if (pcmSpan.size() > expectedSamples)
+    pcmSpan = pcmSpan.subspan(0, expectedSamples);
     if (pcmSpan.size() > expectedSamples)
         pcmSpan = pcmSpan.subspan(0, expectedSamples);
 
