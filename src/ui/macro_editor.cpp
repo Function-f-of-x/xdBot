@@ -1,31 +1,9 @@
 #include "macro_editor.hpp"
 #include "record_layer.hpp"
 
-#include <Geode/modify/CCEGLView.hpp>
 #include <Geode/modify/FLAlertLayer.hpp>
 
 MacroEditLayer* editLayer = nullptr;
-
-#ifdef GEODE_IS_WINDOWS
-
-class $modify(CCEGLView) {
-    void onGLFWMouseMoveCallBack(GLFWwindow* v1, double v2, double v3) {
-        CCEGLView::onGLFWMouseMoveCallBack(v1, v2, v3);
-        
-        if (!editLayer) return;
-        
-        CCScene* scene = CCDirector::get()->getRunningScene();
-        if (MacroEditLayer* layer = scene->getChildByType<MacroEditLayer>(0))
-        editLayer = layer;
-        else
-        return;
-        
-        editLayer->updateHover(getMousePos());
-        
-    }
-};
-
-#endif
 
 class $modify(FLAlertLayer) {
     
@@ -78,6 +56,7 @@ void MacroEditLayer::onClose(CCObject*) {
             [this](auto, bool btn2) {
                 if (!btn2) return;
                 editLayer = nullptr;
+                this->unscheduleUpdate();
                 this->setKeypadEnabled(false);
                 this->setTouchEnabled(false);
                 this->removeFromParentAndCleanup(true);
@@ -85,6 +64,7 @@ void MacroEditLayer::onClose(CCObject*) {
         );
     } else {
         editLayer = nullptr;
+        this->unscheduleUpdate();
         this->setKeypadEnabled(false);
         this->setTouchEnabled(false);
         this->removeFromParentAndCleanup(true);
@@ -114,7 +94,7 @@ void MacroEditLayer::updateHover(cocos2d::CCPoint pos) {
 }
 
 bool MacroEditLayer::init() {
-    if (!Popup::init(438, 247)) return false;
+    if (!Popup::init(438, 247, Utils::getTexture().c_str())) return false;
     Utils::setBackgroundColor(m_bgSprite);
     
     CCMenu* menu = CCMenu::create();
@@ -156,7 +136,7 @@ bool MacroEditLayer::init() {
     noInputsLabel2->setScale(0.625f);
     menu->addChild(noInputsLabel2);
     
-    hoveredBg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    hoveredBg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     hoveredBg->setColor({ 255, 255, 255 });
     hoveredBg->setOpacity(44);
     hoveredBg->setScale(0.375f);
@@ -166,7 +146,7 @@ bool MacroEditLayer::init() {
     hoveredBg->setVisible(false);
     menu->addChild(hoveredBg);
     
-    selectedBg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    selectedBg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     selectedBg->setColor({ 232, 255, 0 });
     selectedBg->setOpacity(44);
     selectedBg->setScale(0.375f);
@@ -175,7 +155,7 @@ bool MacroEditLayer::init() {
     selectedBg->setContentSize({ 471, 65 });
     menu->addChild(selectedBg);
     
-    listBg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    listBg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     listBg->setColor({ 0,0,0 });
     listBg->setOpacity(78);
     listBg->setPositionX(-91);
@@ -183,7 +163,7 @@ bool MacroEditLayer::init() {
     listBg->setContentSize({ 194, 209 });
     menu->addChild(listBg);
     
-    selectedInputBg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    selectedInputBg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     selectedInputBg->setColor({ 0,0,0 });
     selectedInputBg->setOpacity(78);
     selectedInputBg->setPosition({117, 4});
@@ -303,7 +283,7 @@ bool MacroEditLayer::init() {
     btn->setPosition({xPos + 120, yPos - 35});
     selectedInputMenu->addChild(btn);
     
-    CCScale9Sprite* bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    NineSlice* bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     bg->setColor({ 0,0,0 });
     bg->setScale(0.3125f);
     bg->setOpacity(90);
@@ -335,7 +315,7 @@ bool MacroEditLayer::init() {
     btn->setPosition({xPos + 120, yPos - 66});
     selectedInputMenu->addChild(btn);
     
-    bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     bg->setColor({ 0,0,0 });
     bg->setScale(0.3125f);
     bg->setOpacity(90);
@@ -367,7 +347,7 @@ bool MacroEditLayer::init() {
     btn->setPosition({xPos + 120, yPos - 97});
     selectedInputMenu->addChild(btn);
     
-    bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+    bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
     bg->setColor({ 0,0,0 });
     bg->setScale(0.3125f);
     bg->setOpacity(90);
@@ -407,13 +387,15 @@ bool MacroEditLayer::init() {
     m_closeBtn->setPosition(m_closeBtn->getPosition() + offset);
     m_bgSprite->setPosition(m_bgSprite->getPosition() + offset);
     
+    this->scheduleUpdate();
+             
     return true;
 }
 
 void MacroEditLayer::loadPage(int page) {
     currentPage = page;
     
-    pageInput->setString(std::to_string(currentPage).c_str());
+    pageInput->setString(geode::utils::numToString(currentPage).c_str());
     
     if (pageMenu)
     pageMenu->removeFromParentAndCleanup(true);
@@ -528,8 +510,8 @@ void MacroEditLayer::loadPage(int page) {
 
 InputText MacroEditLayer::getInputText(input input) {
     InputText ret = {
-        std::to_string(input.frame),
-        btnNames.contains(input.button) ? btnNames.at(input.button) : std::to_string(input.button),
+        geode::utils::numToString(input.frame),
+        btnNames.contains(input.button) ? btnNames.at(input.button) : geode::utils::numToString(input.button),
         input.player2 ? "Two" : "One",
         input.down ? "Hold" : "Release"
     };
@@ -545,7 +527,9 @@ void MacroEditLayer::textChanged(CCTextInputNode* input) {
     if (text == "") return;
     
     if (input == editLayer->pageInput->getInputNode()) {
-        int page = std::stoi(text);
+        auto pageRes = geode::utils::numFromString<int>(text);
+        if (pageRes.isErr()) return;
+        int page = pageRes.unwrap();
         
         if (page <= 0) return;
         
@@ -556,7 +540,9 @@ void MacroEditLayer::textChanged(CCTextInputNode* input) {
     }
     
     if (input == editLayer->frameInput->getInputNode()) {
-        int frame = std::stoi(text);
+        auto frameRes = geode::utils::numFromString<int>(text);
+        if (frameRes.isErr()) return;
+        int frame = frameRes.unwrap();
         
         editLayer->changeSelectedInputFrame(frame, false);
         
@@ -637,6 +623,14 @@ void MacroEditLayer::reSelectInput() {
     hoveredInput = -2;
     
     selectInput(prevSelected);
+}
+
+void MacroEditLayer::update(float dt) {
+    #ifdef GEODE_IS_DESKTOP
+    if (!editLayer) return;
+    
+    updateHover(geode::cocos::getMousePos());
+    #endif
 }
 
 int MacroEditLayer::getSum(CCObject* obj) {
@@ -917,12 +911,13 @@ void MacroEditLayer::onSave(CCObject*) {
 
 void MacroEditLayer::toggleSaveButton(bool toggle) {
     ButtonSprite* btnSpr = saveBtn->getChildByType<ButtonSprite>(0);
-    CCScale9Sprite* spr = btnSpr->getChildByType<CCScale9Sprite>(0);
+    if (!btnSpr) return;
+    NineSlice* spr = btnSpr->getChildByType<NineSlice>(0);
     CCLabelBMFont* lbl = btnSpr->getChildByType<CCLabelBMFont>(0);
     
     saveBtn->setEnabled(toggle);
-    spr->setOpacity(toggle ? 255 : 130);
-    lbl->setOpacity(toggle ? 255 : 130);
+    if (spr) spr->setOpacity(toggle ? 255 : 130);
+    if (lbl) lbl->setOpacity(toggle ? 255 : 130);
 }
 
 void MacroEditLayer::updateSaved() {
@@ -941,7 +936,7 @@ void MacroEditLayer::onClear(CCObject*) {
     
     geode::createQuickPopup(
         "Clear",
-        "Clear <cy>" + std::to_string(inputs.size()) + "</c> macro actions?",
+        "Clear <cy>" + geode::utils::numToString(inputs.size()) + "</c> macro actions?",
         "Cancel", "Yes",
         [this](auto, bool btn2) {
             if (btn2) {

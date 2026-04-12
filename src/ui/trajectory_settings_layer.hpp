@@ -17,7 +17,7 @@ private:
     TextInput* input = nullptr;
 
     bool init() override {
-        if (!Popup::init(250, 180)) return false;
+        if (!Popup::init(250, 180, Utils::getTexture().c_str())) return false;
         setTitle("Show Trajectory");
 
         Utils::setBackgroundColor(m_bgSprite);
@@ -84,7 +84,7 @@ private:
         colorButton->setPosition({m_size.width - 68, 109});
         m_buttonMenu->addChild(colorButton);
 
-        ButtonSprite* btnSpr = ButtonSprite::create("Ok");
+        ButtonSprite* btnSpr = ButtonSprite::create("OK");
         btnSpr->setScale(0.73f);
         CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(btnSpr, this, menu_selector(TrajectorySettingsLayer::onClose));
         btn->setPosition({m_size.width / 2, 23});
@@ -114,7 +114,6 @@ private:
         textChanged(nullptr);
     }
 
-    // Corrected color conversion function
     cocos2d::ccColor4F ccColor4FFromccColor4B(const cocos2d::ccColor4B& color) {
         return cocos2d::ccColor4F(
             color.r / 255.0f, 
@@ -124,7 +123,7 @@ private:
         );
     }
 
-    void TrajectorySettingsLayer::openColorPicker(CCObject* obj) {
+    void openColorPicker(CCObject* obj) {
         ColorChannelSprite* color = static_cast<CCNode*>(obj)->getTag() == 1 ? color1 : color2;
 
         ColorPickPopup* popup = ColorPickPopup::create(color->getColor());

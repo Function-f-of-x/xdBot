@@ -52,7 +52,7 @@ public:
     void updateVolume(CCObject*) {
         settings.volume = static_cast<int>(volumeSlider->getThumb()->getValue() * 300.f);
 
-        volumeLabel->setString(("Volume (" + std::to_string(settings.volume) + "%)").c_str());
+        volumeLabel->setString(("Volume (" + geode::utils::numToString(settings.volume) + "%)").c_str());
 
         saveSettings();
     }
@@ -108,7 +108,7 @@ public:
     void updateVolume(CCObject*) {
         int volume = static_cast<int>(volumeSlider->getThumb()->getValue() * 300.f);
 
-        volumeLabel->setString(("Master Volume (" + std::to_string(volume) + "%)").c_str());
+        volumeLabel->setString(("Master Volume (" + geode::utils::numToString(volume) + "%)").c_str());
 
         Mod::get()->setSavedValue("clickbot_volume", volume);
     }

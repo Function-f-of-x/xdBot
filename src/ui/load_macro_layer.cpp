@@ -3,6 +3,7 @@
 #include "macro_editor.hpp"
 
 #include <Geode/modify/CCMenu.hpp>
+#include <Geode/utils/async.hpp>
 
 class $modify(CCMenu) {
 	virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
@@ -26,18 +27,26 @@ class $modify(CCMenu) {
 };
 
 void LoadMacroLayer::open(geode::Popup* layer, geode::Popup* layer2, bool autosaves) {
+	#ifdef GEODE_IS_IOS
+	std::filesystem::path path = Mod::get()->getSaveDir();
+	#else
 	std::filesystem::path path = Mod::get()->getSettingValue<std::filesystem::path>("macros_folder");
+	#endif
 	
 	if (!std::filesystem::exists(path)) {
 		if (utils::file::createDirectoryAll(path).isErr())
-		return FLAlertLayer::create("Error", "There was an error getting the folder. ID: 6", "Ok")->show();
+		return FLAlertLayer::create("Error", "There was an error getting the folder. ID: 6", "OK")->show();
 	}
 	
+	#ifdef GEODE_IS_IOS
+	path = Mod::get()->getSaveDir();
+	#else
 	path = Mod::get()->getSettingValue<std::filesystem::path>("autosaves_folder");
+	#endif
 	
 	if (!std::filesystem::exists(path)) {
 		if (utils::file::createDirectoryAll(path).isErr())
-		return FLAlertLayer::create("Error", "There was an error getting the folder. ID: 61", "Ok")->show();
+		return FLAlertLayer::create("Error", "There was an error getting the folder. ID: 61", "OK")->show();
 	}
 	
 	LoadMacroLayer* layerReal = create(layer, layer2, autosaves);
@@ -46,7 +55,7 @@ void LoadMacroLayer::open(geode::Popup* layer, geode::Popup* layer2, bool autosa
 }
 
 void LoadMacroLayer::textChanged(CCTextInputNode* node) {
-	search = Utils::toLower(node->getString());
+	search = geode::utils::string::toLower(node->getString());
 	if (search != "") {
 		searchOff->setVisible(true);
 		searchOff->setOpacity(184);
@@ -99,7 +108,7 @@ void LoadMacroLayer::deleteSelected(CCObject*) {
 	
 	geode::createQuickPopup(
 		"Warning",
-		"Are you sure you want to <cr>delete</c> <cy>" + std::to_string(amount) + "</c> " + (isAutosaves ? "autosave" : "macro") + "(s)?",
+		"Are you sure you want to <cr>delete</c> <cy>" + geode::utils::numToString(amount) + "</c> " + (isAutosaves ? "autosave" : "macro") + "(s)?",
 		"Cancel", "Yes",
 		[this, amount](auto, bool btn2) {
 			if (btn2) {
@@ -138,84 +147,80 @@ LoadMacroLayer* LoadMacroLayer::create(geode::Popup* layer, geode::Popup* layer2
 }
 
 void LoadMacroLayer::onImportMacro(CCObject*) {
-	file::FilePickOptions::Filter textFilter;
+	if (isPickingFile) return;
 	file::FilePickOptions fileOptions;
-	textFilter.description = "Macro Files";
-	textFilter.files = { "*.gdr", "*.xd", "*.json" };
-	fileOptions.filters.push_back(textFilter);
+	fileOptions.filters.push_back({"Macro Files", { "*.gdr", "*.gdr2", "*.xd", "*.json" }});
+	auto weakThis = geode::WeakRef(this);
+	isPickingFile = true;
 	
-	m_importFuture = [](LoadMacroLayer* self, file::FilePickOptions options) -> arc::Future<void> {
-		auto res = co_await file::pick(file::PickMode::OpenFile, options);
-		if (res.isOk()) {
-			auto pathOpt = res.unwrapOrDefault();
-			if (!pathOpt) co_return;
-			std::filesystem::path path = pathOpt.value();
-			
-			auto& g = Global::get();
-			Macro tempMacro;
-			
-			if (path.extension() == ".xd") {
-				tempMacro = Macro::XDtoGDR(path);
-				
-				if (tempMacro.description == "fail") {
-					FLAlertLayer::create("Error", "There was an error importing this macro. ID: 46", "Ok")->show();
-					co_return;
-				}
-			}
-			else {
-				
-				std::ifstream f(path, std::ios::binary);
-				
-				f.seekg(0, std::ios::end);
-				size_t fileSize = f.tellg();
-				f.seekg(0, std::ios::beg);
-				
-				std::vector<std::uint8_t> macroData(fileSize);
-				
-				f.read(reinterpret_cast<char*>(macroData.data()), fileSize);
-				f.close();
-				
-				tempMacro = Macro::importData(macroData);
-				
-			}
-			
-			bool xdMacro = path.extension() == ".xd";
-			
-			int iterations = 0;
-			
-			std::string name = path.filename().string().substr(0, path.filename().string().find_last_of('.'));
-			
-			std::filesystem::path newPath = Mod::get()->getSettingValue<std::filesystem::path>("macros_folder") / name;
-			
-			std::string pathString = newPath.string();
-			
-			while (std::filesystem::exists(pathString + ".gdr.json")) {
-				iterations++;
-				
-				if (iterations > 1) {
-					int length = 3 + std::to_string(iterations - 1).length();
-					pathString.erase(pathString.length() - length, length);
-				}
-				
-				pathString += fmt::format(" ({})", std::to_string(iterations));
-			}
-			
-			pathString += ".gdr.json";
-			
-			std::ofstream f2(Utils::widen(pathString), std::ios::binary);
-			auto data = tempMacro.exportData(true);
-			
-			f2.write(reinterpret_cast<const char*>(data.data()), data.size());
-			f2.close();
-			
-			self->reloadList(0);
-			
-			if (xdMacro)
-			FLAlertLayer::create("Warning", "<cl>.xd</c> extension macros may not function correctly in this version.", "Ok")->show();
-			
-			Notification::create("Macro Imported", NotificationIcon::Success)->show();
+	m_importTask.spawn(file::pick(file::PickMode::OpenFile, fileOptions), [weakThis](auto res) {
+		
+		auto self = weakThis.lock();
+		if (!self) return;
+		
+		self->isPickingFile = false;
+		
+		if (!res.isOk()) return;
+		
+		auto pathOpt = res.unwrap();
+		if (!pathOpt) return;
+		
+		std::filesystem::path path = pathOpt.value();
+		std::string ext = geode::utils::string::pathToString(path.extension());
+		std::string stemExt = geode::utils::string::pathToString(path.stem().extension());
+        bool isGdrJson = (ext == ".json") && (stemExt == ".gdr");
+		bool needsConversion = (ext == ".xd");
+		std::string outExt = isGdrJson ? ".gdr.json" : ext;
+		
+		std::string name = geode::utils::string::pathToString(
+			isGdrJson ? path.stem().stem() : path.stem()
+		);
+		
+		#ifdef GEODE_IS_IOS
+		std::filesystem::path folder = Mod::get()->getSaveDir() / "macros";
+		#else
+		std::filesystem::path folder = Mod::get()->getSettingValue<std::filesystem::path>("macros_folder");
+		#endif
+		
+		std::filesystem::path finalPath = folder / (name + outExt);
+		int iterations = 1;
+		while (std::filesystem::exists(finalPath)) {
+			finalPath = folder / fmt::format("{} ({}){}", name, iterations++, outExt);
 		}
-	}(this, { dirs::getGameDir(), { textFilter } });
+		
+		if (!needsConversion) {
+			std::error_code ec;
+			std::filesystem::copy_file(path, finalPath, std::filesystem::copy_options::overwrite_existing, ec);
+			if (ec) {
+				FLAlertLayer::create("Error", "Failed to copy macro file.", "OK")->show();
+				return;
+			}
+			self->reloadList(0);
+			Notification::create("Macro Imported", NotificationIcon::Success)->show();
+			return;
+		}
+		
+		Macro tempMacro = Macro::XDtoGDR(path);
+		if (tempMacro.description == "fail") {
+			FLAlertLayer::create("Error", "Import failed. ID: 46", "OK")->show();
+			return;
+		}
+		
+		auto exportResult = tempMacro.exportGDR2();
+		if (exportResult.isErr()) {
+			FLAlertLayer::create("Error", "Failed to export imported macro.", "OK")->show();
+			return;
+		}
+		
+		if (!geode::utils::file::writeBinary(finalPath, exportResult.unwrap())) {
+			FLAlertLayer::create("Error", "Failed to write macro file.", "OK")->show();
+			return;
+		}
+		
+		self->reloadList(0);
+		FLAlertLayer::create("Warning", "Legacy .xd macros may be unstable.", "OK")->show();
+		Notification::create("Macro Imported", NotificationIcon::Success)->show();
+	});
 }
 
 bool LoadMacroLayer::init(geode::Popup* layer, geode::Popup* layer2, bool autosaves) {
@@ -418,33 +423,35 @@ void LoadMacroLayer::updateSort(CCObject*) {
 void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 	cocos2d::CCSize winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
 	
+	#ifdef GEODE_IS_IOS
+	std::filesystem::path path = Mod::get()->getSaveDir() / (isAutosaves ? "autosaves" : "macros");
+	#else
 	std::filesystem::path path = Mod::get()->getSettingValue<std::filesystem::path>(isAutosaves ? "autosaves_folder" : "macros_folder");
+	#endif
 	std::vector<std::filesystem::path> macros = file::readDirectory(path).unwrapOrDefault();
 	
 	CCArray* cells = CCArray::create();
 	
 	for (int i = invertSort ? macros.size() - 1 : 0; invertSort ? i >= 0 : i < macros.size(); invertSort ? --i : ++i) {
 		
-		if (macros[i].extension() != ".gdr" && macros[i].extension() != ".xd" && macros[i].extension() != ".json") continue;
+		if (macros[i].extension() != ".gdr" && macros[i].extension() != ".gdr2" && macros[i].extension() != ".xd" && macros[i].extension() != ".json") continue;
 		
-		std::string name = macros[i].filename().string().substr(0, macros[i].filename().string().find_last_of('.'));
+		std::string name = geode::utils::string::pathToString(macros[i].filename()).substr(0, geode::utils::string::pathToString(macros[i].filename()).find_last_of('.'));
 		
 		if (macros[i].extension() == ".json")
 		name = name.substr(0, name.find_last_of('.'));
 		
-		if (Utils::toLower(name).find(search) == std::string::npos && search != "") continue;
+		if (geode::utils::string::toLower(name).find(search) == std::string::npos && search != "") continue;
 		
 		std::time_t date;
 		
-		#ifdef GEODE_IS_WINDOWS
 		date = Utils::getFileCreationTime(macros[i]);
-		#endif
 		
 		MacroCell* cell = MacroCell::create(macros[i], name, date, menuLayer, mergeLayer, static_cast<CCLayer*>(this));
 		cells->addObject(cell);
 	}
 	
-	macroCountLbl->setString(fmt::format("{} Macros", std::to_string(cells->count())).c_str());
+	macroCountLbl->setString(fmt::format("{} Macros", geode::utils::numToString(cells->count())).c_str());
 	
 	if (cells->count() == 0) {
 		CCLabelBMFont* lbl = CCLabelBMFont::create(isAutosaves ? "No Autosaves" : "No Macros", "bigFont.fnt");
@@ -545,7 +552,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 	leftBorder->setScaleY(5.6f);
 	leftBorder->setPosition({ -5.45, -1 });
 	
-	CCScale9Sprite* listBackground = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	NineSlice* listBackground = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	listBackground->setScale(0.7f);
 	listBackground->setColor({ 0,0,0 });
 	listBackground->setOpacity(75);
@@ -614,17 +621,11 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	
 	lbl->setPosition({ 10, 23 });
 	
-	#ifdef GEODE_IS_WINDOWS
 	std::string subText = Utils::formatTime(date) + " | ";
 	
-	subText += autosave ? "Auto Save" : path.extension().string();
+	subText += autosave ? "Auto Save" : geode::utils::string::pathToString(path.extension());
 	
 	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
-	#else
-	std::string subText = autosave ? "Auto Save" : path.extension().string();
-	
-	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
-	#endif
 	
 	lbl->setPosition({ 10, 9 });
 	lbl->setScale(0.55f);
@@ -675,7 +676,7 @@ void MacroCell::handleLoad() {
 	if (path.extension() == ".xd") {
 		if (!Macro::loadXDFile(path)) {
 			if (!isMerge)
-			return FLAlertLayer::create("Error", "There was an error loading this macro. ID: 45", "Ok")->show();
+			return FLAlertLayer::create("Error", "There was an error loading this macro. ID: 45", "OK")->show();
 			else
 			return;
 		}
@@ -686,18 +687,15 @@ void MacroCell::handleLoad() {
 		g.macro = oldMacro;
 	}
 	else {
-		std::ifstream f(path.string(), std::ios::binary);
+		auto readResult = geode::utils::file::readBinary(path);
+		if (readResult.isErr()) {
+			if (!isMerge)
+			return FLAlertLayer::create("Error", "There was an error loading this macro. ID: 45", "OK")->show();
+			else
+			return;
+		}
 		
-		f.seekg(0, std::ios::end);
-		size_t fileSize = f.tellg();
-		f.seekg(0, std::ios::beg);
-		
-		std::vector<std::uint8_t> macroData(fileSize);
-		
-		f.read(reinterpret_cast<char*>(macroData.data()), fileSize);
-		f.close();
-		
-		newMacro = Macro::importData(macroData);
+		newMacro = Macro::importData(readResult.unwrap());
 	}
 	
 	if (isMerge) {
@@ -753,7 +751,7 @@ void MacroCell::handleLoad() {
 	}
 	
 	if (path.extension() == ".xd")
-	FLAlertLayer::create("Warning", "<cl>.xd</c> extension macros may not function correctly in this version.", "Ok")->show();
+	FLAlertLayer::create("Warning", "<cl>.xd</c> extension macros may not function correctly in this version.", "OK")->show();
 	
 	Notification::create("Macro Loaded", NotificationIcon::Success)->show();
 }
@@ -764,7 +762,7 @@ void MacroCell::onLoad(CCObject*) {
 	
 	geode::createQuickPopup(
 		"Warning",
-		"Replace the current <cy>" + std::to_string(Global::get().macro.inputs.size()) + "</c> macro actions?",
+		"Replace the current <cy>" + geode::utils::numToString(Global::get().macro.inputs.size()) + "</c> macro actions?",
 		"Cancel", "Yes",
 		[this](auto, bool btn2) {
 			if (btn2) {
@@ -792,7 +790,7 @@ void MacroCell::deleteMacro(bool reload) {
 	std::error_code ec;
 	std::filesystem::remove(path, ec);
 	if (ec) {
-		return FLAlertLayer::create("Error", "There was an error deleting this macro. ID: 7", "Ok")->show();
+		return FLAlertLayer::create("Error", "There was an error deleting this macro. ID: 7", "OK")->show();
 	}
 	else {
 		if (reload) {

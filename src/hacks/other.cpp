@@ -22,14 +22,14 @@ class $modify(CCScheduler) {
 
             return CCScheduler::update(dt);
         }
-        // #ifndef GEODE_IS_IOS
-        // if (g.renderer.recording || g.renderer.recordingAudio) {
-        //     if (g.currentPitch != 1.f)
-        //         Global::updatePitch(1.f);
+        #ifndef GEODE_IS_IOS
+        if (g.renderer.recording) {
+            if (g.currentPitch != 1.f)
+                Global::updatePitch(1.f);
 
-        //     return CCScheduler::update(dt);
-        // }
-        // #endif
+            return CCScheduler::update(dt);
+        }
+        #endif
 
         float speedhack = 1.f;
 
@@ -37,7 +37,7 @@ class $modify(CCScheduler) {
             std::string speedhackValue = g.mod->getSavedValue<std::string>("macro_speedhack");
 
             if (speedhackValue != "0.0" && speedhackValue != "") {
-                speedhack = std::stof(speedhackValue);
+                speedhack = geode::utils::numFromString<float>(speedhackValue).unwrap();
                 float decimals = speedhack - static_cast<int>(speedhack);
 
                 float closest = safeValues[0];
@@ -104,8 +104,7 @@ class $modify(PlayLayer) {
             return;
         }
         g.autosaveCheck = 0.f;
-        auto now = std::chrono::steady_clock::now();
-        int currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        int currentTime = asp::time::SystemTime::now().timeSinceEpoch().millis();
 
         Macro::autoSave(m_level, currentTime);
     }
@@ -129,11 +128,7 @@ class $modify(PlayLayer) {
         else
             Global::get().safeMode = true;
         
-        if (getActionByTag(16)) {
-            // #ifndef GEODE_IS_IOS
-            // if (Global::get().renderer.recordingAudio) Global::get().renderer.stopAudio();
-            // #endif
-            
+        if (getActionByTag(16)) {            
             if (g.mod->getSavedValue<bool>("respawn_time_enabled")) {
                 stopActionByTag(16);
                 CCSequence* seq = CCSequence::create(CCDelayTime::create(g.mod->getSavedValue<double>("respawn_time")), CCCallFunc::create(this, callfunc_selector(PlayLayer::delayedResetLevel)), nullptr);

@@ -8,7 +8,7 @@ void ClickbotLayer::updateLabels() {
 
 		ClickSetting settings = matjson::Serialize<ClickSetting>::from_json(data);
 
-		std::string filename = settings.path.filename().string();
+		std::string filename = geode::utils::string::pathToString(settings.path.filename());
 
 		if (!std::filesystem::exists(settings.path)) filename = "N/A";
 
@@ -20,7 +20,7 @@ void ClickbotLayer::updateLabels() {
 }
 
 bool ClickbotLayer::init() {
-	if (!Popup::init(432, 250)) return false;
+	if (!Popup::init(432, 250, Utils::getTexture().c_str())) return false;
 	setTitle("ClickBot");
 	m_title->setPositionY(m_title->getPositionY() + 5);
 	
@@ -35,7 +35,7 @@ bool ClickbotLayer::init() {
 	CCMenu* menu = CCMenu::create();
 	m_mainLayer->addChild(menu);
 
-	CCScale9Sprite* bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	NineSlice* bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
 	bg->setPosition(ccp(-79, -10));
@@ -53,7 +53,7 @@ bool ClickbotLayer::init() {
 	lbl->setScale(0.35);
 	menu->addChild(lbl);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setScale(0.375);
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
@@ -80,7 +80,7 @@ bool ClickbotLayer::init() {
 	lbl->setScale(0.35);
 	menu->addChild(lbl);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setScale(0.375);
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
@@ -105,7 +105,7 @@ bool ClickbotLayer::init() {
 	lbl->setScale(0.35);
 	menu->addChild(lbl);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setScale(0.375);
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
@@ -130,7 +130,7 @@ bool ClickbotLayer::init() {
 	lbl->setScale(0.35);
 	menu->addChild(lbl);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setScale(0.375);
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
@@ -155,7 +155,7 @@ bool ClickbotLayer::init() {
 	lbl->setScale(0.35);
 	menu->addChild(lbl);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setScale(0.375);
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
@@ -180,7 +180,7 @@ bool ClickbotLayer::init() {
 	lbl->setScale(0.35);
 	menu->addChild(lbl);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setScale(0.375);
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
@@ -200,7 +200,7 @@ bool ClickbotLayer::init() {
 	btn->setID("release_right");
 	menu->addChild(btn);
 
-	bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setColor({ 0,0,0 });
 	bg->setOpacity(78);
 	bg->setPosition(ccp(128, -10));
@@ -226,7 +226,7 @@ bool ClickbotLayer::init() {
 	volumeSlider->setValue(volume / 300.f);
 	menu->addChild(volumeSlider);
 
-	volumeLabel = CCLabelBMFont::create(("Master Volume (" + std::to_string(volume) + "%)").c_str(), "goldFont.fnt");
+	volumeLabel = CCLabelBMFont::create(("Master Volume (" + geode::utils::numToString(volume) + "%)").c_str(), "goldFont.fnt");
 	volumeLabel->setPosition(ccp(128, 35));
 	volumeLabel->setScale(0.35f);
 	menu->addChild(volumeLabel);
@@ -314,11 +314,11 @@ bool ClickSettingsLayer::init(std::string button, geode::Popup* layer) {
 
 	matjson::Value data = Mod::get()->getSavedValue<matjson::Value>(button);
 	settings = matjson::Serialize<ClickSetting>::from_json(data);
-	std::string filename = settings.path.filename().string();
+	std::string filename = geode::utils::string::pathToString(settings.path.filename());
 
 	if (!std::filesystem::exists(settings.path)) filename = "N/A";
 
-	CCScale9Sprite* bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+	NineSlice* bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
 	bg->setColor({ 0,0,0 });
 	bg->setScale(0.6f);
 	bg->setOpacity(88);
@@ -350,7 +350,7 @@ bool ClickSettingsLayer::init(std::string button, geode::Popup* layer) {
 	volumeSlider->setValue(settings.volume / 300.f);
 	menu->addChild(volumeSlider);
 
-	volumeLabel = CCLabelBMFont::create(("Volume (" + std::to_string(settings.volume) + "%)").c_str(), "goldFont.fnt");
+	volumeLabel = CCLabelBMFont::create(("Volume (" + geode::utils::numToString(settings.volume) + "%)").c_str(), "goldFont.fnt");
 	volumeLabel->setPosition(ccp(-42, -9));
 	volumeLabel->setScale(0.45f);
 	menu->addChild(volumeLabel);
@@ -410,7 +410,7 @@ void ClickSettingsLayer::onSelectFile(CCObject*) {
 			auto pathOpt = res.unwrapOrDefault();
 			if (pathOpt) {
 				std::filesystem::path path = pathOpt.value();
-				self->filenameLabel->setString(path.filename().string().c_str());
+				self->filenameLabel->setString(geode::utils::string::pathToString(path.filename()).c_str());
 				self->settings.path = path;
 				self->saveSettings();
 				static_cast<ClickbotLayer*>(self->clickbotLayer)->updateLabels();
@@ -432,7 +432,7 @@ void ClickSettingsLayer::onRestore(CCObject*) {
 	
 	std::filesystem::path path = Mod::get()->getResourcesDir() / fmt::format("default_{}.mp3", button);
 
-	filenameLabel->setString(path.filename().string().c_str());
+	filenameLabel->setString(geode::utils::string::pathToString(path.filename()).c_str());
 
 	settings.path = path;
 	saveSettings();

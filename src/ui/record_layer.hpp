@@ -47,7 +47,7 @@ public:
 	CCLabelBMFont* warningLabel = nullptr;
 
 	CCSprite* warningSprite = nullptr;
-	CCScale9Sprite* tpsBg = nullptr;
+	NineSlice* tpsBg = nullptr;
 
 	CCMenuItemSpriteExtra* FPSLeft = nullptr;
 	CCMenuItemSpriteExtra* FPSRight = nullptr;
@@ -104,7 +104,7 @@ public:
 	static RecordLayer* openMenu(bool instant = false);
 
 	void openMenu2(CCObject*) {
-		RecordLayer::openMenu();
+		RecordLayer::openMenu(Mod::get()->getSettingValue<bool>("open_menu_instant"));
 	}
 
 	void moreSettings(CCObject*) {
@@ -125,7 +125,7 @@ public:
 
 	void toggleRender(CCObject* btn);
 	
-	void toggleRenderIOS(CCObject* btn);
+	void toggleRender2(CCObject* btn);
 
 	void openPresets(CCObject*);
 

@@ -2,6 +2,7 @@
 
 #include <Geode/Geode.hpp>
 // #include <Geode/loader/SettingEvent.hpp>
+#include <eclipse.eclipse-menu/include/config.hpp>
 
 #include <string>
 #include <thread>
@@ -9,13 +10,14 @@
 #include <queue>
 #include <cmath>
 #include <vector>
+#include <functional>
 
 #include "renderer/renderer.hpp"
 #include "macro.hpp"
 
 using namespace geode::prelude;
 
-const int seedAddr = 0x6a4e20;
+// const int seedAddr = 0x6a4e20;
 
 const int indexButton[6] = { 1, 2, 3, 1, 2, 3 };
 
@@ -61,6 +63,8 @@ public:
     }
 
     static bool hasIncompatibleMods();
+    
+    static bool enabledIncompatibleGDSettings();
 
     static float getTPS();
 
@@ -89,17 +93,18 @@ public:
 
     Macro macro;
     #ifndef GEODE_IS_IOS
-    // Renderer renderer;
+    Renderer renderer;
     #endif
     state state = none;
-
+    
+    geode::utils::random::Generator gen;
     std::unordered_map<CheckpointObject*, CheckpointData> checkpoints;
     std::unordered_set<int> allKeybinds;
     std::unordered_set<int> playedFrames;
     std::vector<int> keybinds[6];
 
     int lastAutoSaveFrame = 0;
-    std::chrono::time_point<std::chrono::steady_clock> lastAutoSaveMS = std::chrono::steady_clock::now();
+    asp::Instant lastAutoSaveMS = asp::Instant::now();
     int currentSession = 0;
 
     bool stepFrame = false;
@@ -134,10 +139,36 @@ public:
     bool stopPlaying = false;
     bool tpsEnabled = false;
     float tps = 240.f;
+    
+    std::function<void(bool)> onTpsEnabledChanged;
+    std::function<void(double)> onTpsChanged;
+    
+    void setTpsEnabled(bool enabled) {
+        tpsEnabled = enabled;
+        mod->setSavedValue("macro_tps_enabled", enabled);
+        
+        if (Loader::get()->getLoadedMod("eclipse.eclipse-menu")) {
+            eclipse::config::setInternal("global.tpsbypass.toggle", enabled);
+        } else {
+            if (onTpsEnabledChanged) onTpsEnabledChanged(enabled);
+        }
+    }
+    
+    void setTps(float newTps) {
+        tps = newTps;
+        mod->setSavedValue("macro_tps", static_cast<double>(newTps));
+        if (Loader::get()->getLoadedMod("eclipse.eclipse-menu")) {
+            eclipse::config::setInternal("global.tpsbypass", static_cast<double>(newTps));
+        } else {
+            if (onTpsChanged) onTpsChanged(static_cast<double>(newTps));
+        }
+    }
+    
     bool previousTpsEnabled = false;
     float previousTps = 0.f;
     bool autoclicker = false;
     bool autoclickerP1 = false;
+    bool alwaysPracticeFixes = false;
     bool autoclickerP2 = false;
     int holdFor = 0;
     int releaseFor = 0;
@@ -152,6 +183,7 @@ public:
     bool addSideHoldingMembers[2] = { false, false };
     bool wasHolding[6] = { false, false, false, false, false, false };
     bool heldButtons[6] = { false, false, false, false, false, false };
+    bool respawnHeldButtons[6] = { false, false, false, false, false, false };
 
     int delayedFrameRelease[2][2] = { { -1, -1 }, { -1, -1 } };
     int delayedFrameReleaseMain[2] = { -1, -1 };
@@ -161,6 +193,9 @@ public:
     int ignoreJumpButton = -1;
     int frameOffset = 0;
     int previousFrame = 0;
+    
+    int m_frameCount = 0;
+    bool m_isHalfTick = false;
 
     size_t currentAction = 0;
     size_t currentFrameFix = 0;

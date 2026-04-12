@@ -13,15 +13,15 @@ class $modify(PlayLayer) {
         PlayLayer::postUpdate(dt);
         auto& g = Global::get();
         
-        //#ifndef GEODE_IS_IOS
-        // if (g.state != state::none && g.frameLabel && !g.renderer.recording) {
-        //     m_fields->frameLabel->setString(("Frame: " + std::to_string(Global::getCurrentFrame())).c_str());
-        // }
-        // #else
-        if (g.state != state::none && g.frameLabel) {
-            m_fields->frameLabel->setString(("Frame: " + std::to_string(Global::getCurrentFrame())).c_str());
+        #ifndef GEODE_IS_IOS
+        if (g.state != state::none && g.frameLabel && !g.renderer.recording) {
+            m_fields->frameLabel->setString(("Frame: " + geode::utils::numToString(Global::getCurrentFrame())).c_str());
         }
-        // #endif
+        #else
+        if (g.state != state::none && g.frameLabel) {
+            m_fields->frameLabel->setString(("Frame: " + geode::utils::numToString(Global::getCurrentFrame())).c_str());
+        }
+        #endif
     }
     
     bool init(GJGameLevel * level, bool b1, bool b2) {
@@ -114,34 +114,34 @@ void Interface::updateLabels() {
     if (!pl) return;
     
     if (g.state == state::none || !g.frameLabel)
-        static_cast<CCLabelBMFont*>(pl->getChildByID("frame-label"_spr))->setString("");
+    static_cast<CCLabelBMFont*>(pl->getChildByID("frame-label"_spr))->setString("");
     
     CCLabelBMFont* label = typeinfo_cast<CCLabelBMFont*>(pl->getChildByID("state-label"_spr));
     
     if (!label) return;
     
     if (g.mod->getSavedValue<bool>("macro_hide_labels"))
-        return label->setString("");
+    return label->setString("");
     
     state state = g.state;
     std::string labelText = state == state::none ? "" : "Playing";
     if (state == state::recording)
-        labelText = "Recording";
+    labelText = "Recording";
     
     if (labelText == "Recording" && state == state::recording && g.mod->getSavedValue<bool>("macro_hide_recording_label"))
-        labelText = "";
+    labelText = "";
     
     if (labelText == "Playing" && state == state::playing && g.mod->getSavedValue<bool>("macro_hide_playing_label"))
-        labelText = "";
+    labelText = "";
     
-// #ifndef GEODE_IS_IOS
-    // if (g.renderer.recording && g.mod->getSavedValue<bool>("render_hide_labels")) {
-        // labelText = "";
-        // if (CCLabelBMFont* lbl = typeinfo_cast<CCLabelBMFont*>(pl->getChildByID("frame-label"_spr)))
-            // lbl->setString("");
-    // }
-// #endif
-
+#ifndef GEODE_IS_IOS
+    if (g.renderer.recording && g.mod->getSavedValue<bool>("render_hide_labels")) {
+        labelText = "";
+        if (CCLabelBMFont* lbl = typeinfo_cast<CCLabelBMFont*>(pl->getChildByID("frame-label"_spr)))
+        lbl->setString("");
+    }
+    #endif
+    
     label->setString(labelText.c_str());
 }
 
@@ -154,10 +154,10 @@ void Interface::updateButtons() {
     
     auto& g = Global::get();
     
-    #ifdef GEODE_IS_WINDOWS
-    bool isWindows = true;
+    #ifdef GEODE_IS_DESKTOP
+    bool isDesktop = true;
     #else
-    bool isWindows = false;
+    bool isDesktop = false;
     #endif
     
     CCNode* disableStepperBtn = menu->getChildByID("disable-stepper-btn");
@@ -209,7 +209,7 @@ void Interface::updateButtons() {
     size = sprite->getContentSize();
     speedhackBtn->setContentSize({ size.width * scale, size.height * scale });
     
-    if ((g.state != state::recording && !g.mod->getSavedValue<bool>("macro_always_show_buttons")) || isWindows) {
+    if ((g.state != state::recording && !g.mod->getSavedValue<bool>("macro_always_show_buttons")) || isDesktop) {
         disableStepperBtn->setVisible(false);
         stepFrameBtn->setVisible(false);
         speedhackBtn->setVisible(false);

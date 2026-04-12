@@ -1,81 +1,93 @@
-// #include "../includes.hpp"
-// #include "ffmpeg/events.hpp"
+#pragma once
 
-// #ifndef GEODE_IS_IOS
-// enum AudioMode {
-//     Off = 0,
-//     Song = 1,
-//     Record = 2
-// };
+#include "../includes.hpp"
+#include "ffmpeg/events.hpp"
+#include "spinlock.hpp"
 
-// class MyRenderTexture {
-// public:
-//     unsigned width, height;
-//     int old_fbo, old_rbo;
-//     unsigned fbo;
-//     geode::prelude::CCTexture2D* texture = nullptr;
-//     void begin();
-//     void capture(std::mutex& lock, std::vector<uint8_t>& data, volatile bool& lul);
-// };
+#ifndef GEODE_IS_IOS
 
-// class Renderer {
-// public:
+class xdBotRenderTexture {
+public:
+    unsigned width   = 0;
+    unsigned height  = 0;
+    int      old_fbo = 0;
+    unsigned fbo     = 0;
+    GLuint   texture = 0;
 
-//     Renderer() : width(1920), height(1080), fps(60) {}
+    void begin();
+    void end();
+    void capture(cocos2d::CCNode* node, std::vector<uint8_t>& buffer, Spinlock& frameReady);
+};
 
-//     volatile bool frameHasData;
-//     bool levelFinished = false;
-//     bool recording = false;
-//     bool pause = false;
-//     int audioMode = 0;
-//     float ogMusicVol;
-//     float ogSFXVol;
-//     float SFXVolume = 1.f;
-//     float musicVolume = 1.f;
+enum class AudioMode {
+    Off    = 0,
+    Record = 1
+};
 
-//     bool usingApi = false;
-//     bool dontRender = false;
-//     bool dontRecordAudio = false;
-//     bool recordingAudio = false;
-//     bool startedAudio = false;
-//     bool isPlatformer = false;
-//     int finishFrame = 0;
-//     int levelStartFrame = 0;
+class Renderer {
+public:
+    Renderer() : width(1920), height(1080), fps(60) {}
 
-//     float stopAfter = 3.f;
-//     float timeAfter = 0.f;
-//     unsigned width, height;
-//     unsigned fps;
-//     double lastFrame_t, extra_t;
-//     int pauseAttempts = 0;
+    // Level state
+    bool recording     = false;
+    bool levelFinished = false;
+    bool capturing     = false;
 
-//     MyRenderTexture renderer;
-//     ffmpeg::events::Recorder ffmpeg;
-//     std::vector<uint8_t> currentFrame;
-//     std::mutex lock;
-//     std::string codec = "", bitrate = "12M", extraArgs = "", videoArgs = "", extraAudioArgs = "", path = "";
-//     std::string ffmpegPath = (geode::dirs::getGameDir() / "ffmpeg.exe").string();
-//     std::unordered_set<int> renderedFrames;
+    // Audio
+    AudioMode audioMode   = AudioMode::Off;
+    float     SFXVolume   = 1.f;
+    float     musicVolume = 1.f;
 
-//     FMODAudioEngine* fmod = nullptr;
-//     cocos2d::CCSize ogRes = {0, 0};
-//     float ogScaleX = 1.f;
-//     float ogScaleY = 1.f;
+    // Flags
+    bool usingApi = false;
 
-//     void captureFrame();
-//     void changeRes(bool og);
+    // Timing - end screen
+    float stopAfter = 3.f;
+    float timeAfter = 0.f;
 
-//     void start();
-//     void startAudio(PlayLayer* pl);
+    // Timing - eclipse frame accumulation pattern
+    float totalTime   = 0.f;
+    float extra_t     = 0.f;
+    float lastFrame_t = 0.f;
 
-//     void stop(int frame = 0);
-//     void stopAudio();
+    // Resolution
+    unsigned width, height, fps;
 
-//     void handleRecording(PlayLayer* pl, int frame);
-//     void handleAudioRecording(PlayLayer* pl, int frame);
-    
-//     static bool toggle();
-//     static bool shouldUseAPI();
-//     bool tryPause();
-// };
-// #endif
+    cocos2d::CCSize oldDesignResolution = {0, 0};
+    cocos2d::CCSize newDesignResolution = {0, 0};
+    cocos2d::CCSize originalScreenScale = {0, 0};
+    cocos2d::CCSize newScreenScale      = {0, 0};
+
+    // ffmpeg
+    ffmpeg::events::Recorder ffmpeg;
+
+#ifdef GEODE_IS_WINDOWS
+    // Set in toggle() from the "ffmpeg_path" mod setting before start() is called
+    std::string ffmpegPath;
+#endif
+
+    std::string codec, bitrate, extraArgs, videoArgs, extraAudioArgs, path;
+
+    // FMOD
+    FMODAudioEngine* fmod = nullptr;
+
+    void captureFrame();
+    void applyWinSize();
+    void restoreWinSize();
+    void fixUIObjects();
+    void start();
+    void stop(int frame = 0);
+
+    static bool toggle();
+    static bool shouldUseAPI();
+
+private:
+    Spinlock             m_frameReady;
+    std::vector<uint8_t> m_currentFrame;
+    xdBotRenderTexture   m_renderTexture;
+
+    void recordThread();
+    void showEndScreenIfNeeded();
+};
+
+#endif

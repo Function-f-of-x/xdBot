@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../includes.hpp"
 #include "record_layer.hpp"
 
@@ -10,10 +12,10 @@ public:
 private:
 
     bool init() override {
-        if (!Popup::init(243, 231)) return false;
+        if (!Popup::init(243, 231, Utils::getTexture().c_str())) return false;
         setTitle("Render Presets");
 
-        CCScale9Sprite* bg = CCScale9Sprite::create("square02b_001.png", { 0, 0, 80, 80 });
+        NineSlice* bg = NineSlice::create("square02b_001.png", { 0, 0, 80, 80 });
         bg->setColor({ 0,0,0 });
         bg->setOpacity(75);
         bg->setPosition({m_size.width / 2, 116.5});
@@ -22,9 +24,9 @@ private:
 
         for (int i = 0; i < 5; i++) {
             float height = 170.f - 26.5f * i;
-            std::string id = "render_slot_" + std::to_string(i + 1);
+            std::string id = "render_slot_" + geode::utils::numToString(i + 1);
 
-            CCLabelBMFont* lbl = CCLabelBMFont::create(("Slot " + std::to_string(i + 1)).c_str(), "bigFont.fnt");
+            CCLabelBMFont* lbl = CCLabelBMFont::create(("Slot " + geode::utils::numToString(i + 1)).c_str(), "bigFont.fnt");
             lbl->setPosition({63, height + 5.f});
             lbl->setScale(0.425f);
             m_mainLayer->addChild(lbl);
@@ -45,14 +47,15 @@ private:
             if (!Mod::get()->hasSavedValue(id)) {
                 lbl->setString("N/A");
                 btn->setEnabled(false);
-                spr->getChildByType<CCScale9Sprite>(0)->setOpacity(120);
-                spr->getChildByType<CCLabelBMFont>(0)->setOpacity(120);
+                auto ns = spr->getChildByType<NineSlice>(0);
+                auto label = spr->getChildByType<CCLabelBMFont>(0);
+                if (ns) ns->setOpacity(120);
+                if (label) label->setOpacity(120);
             } else {
                 btn->setEnabled(true);
                 matjson::Value json = Mod::get()->getSavedValue<matjson::Value>(id);
                 lbl->setString((json["width"].asString().unwrapOrDefault() + " x " + json["height"].asString().unwrapOrDefault()).c_str());
             }
-
 
             spr = ButtonSprite::create("Save");
             spr->setScale(0.6f);
@@ -91,7 +94,7 @@ private:
         onClose(nullptr);
 
         Loader::get()->queueInMainThread([] {
-            CCScene* scene = CCDirector::sharedDirector()->getRunningScene();
+            CCScene* scene = CCScene::get();
             if (RecordLayer* layer = scene->getChildByType<RecordLayer>(0))
                 layer->onClose(nullptr);
             RecordLayer::openMenu(true);
@@ -112,7 +115,7 @@ private:
         else if (geode::utils::file::createDirectoryAll(path).isOk())
             file::openFolder(path);
         else
-            FLAlertLayer::create("Error", "There was an error getting the folder. ID: 4", "Ok")->show();
+            FLAlertLayer::create("Error", "There was an error getting the folder. ID: 4", "OK")->show();
     }
 
     void onLoad(CCObject* obj) {
@@ -136,7 +139,6 @@ private:
         m->setSavedValue("render_fade_out_time", json["fade_out_time"].asString().unwrapOrDefault());
 
         m->setSavedValue("render_only_song", json["only_song"].asBool().unwrapOrDefault());
-        m->setSavedValue("render_record_audio", json["record_audio"].asBool().unwrapOrDefault());
         m->setSavedValue("render_hide_endscreen", json["hide_endscreen"].asBool().unwrapOrDefault());
         m->setSavedValue("render_hide_levelcomplete", json["hide_levelcomplete"].asBool().unwrapOrDefault());
         m->setSavedValue("render_fade_in", json["fade_in"].asBool().unwrapOrDefault());
@@ -166,7 +168,6 @@ private:
         json["fade_out_time"] = m->getSavedValue<std::string>("render_fade_out_time");
 
         json["only_song"] = m->getSavedValue<bool>("render_only_song");
-        json["record_audio"] = m->getSavedValue<bool>("render_record_audio");
         json["hide_endscreen"] = m->getSavedValue<bool>("render_hide_endscreen");
         json["hide_levelcomplete"] = m->getSavedValue<bool>("render_hide_levelcomplete");
         json["fade_in"] = m->getSavedValue<bool>("render_fade_in");
